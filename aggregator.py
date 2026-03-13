@@ -53,23 +53,20 @@ def generate_static_summary(all_posts):
     west_hits = west_hits if west_hits > 0 else "142"
     iran_hits = iran_hits if iran_hits > 0 else "318"
     est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
-    now_date = datetime.datetime.now().strftime("%d.%m.%Y")
-    now_time = datetime.datetime.now().strftime("%H:%M")
-
     sources_html = ", ".join([f'<a href="https://t.me/{ch}" style="color:var(--accent);text-decoration:none;">@{ch}</a>' for ch in CHANNELS])
 
     return f"""
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
-            <h2 style="margin:0; font-size:20px; letter-spacing:-0.5px;">Глобальный анализ ситуации</h2>
-            <span style="font-size:16px; font-weight:700; color:var(--accent); opacity:0.8;">{now_date} {now_time}</span>
+            <h2 style="margin:0; font-size:18px; letter-spacing:-0.5px; font-weight:900;">Глобальный анализ ситуации</h2>
+            <span id="summary-time" style="font-size:16px; font-weight:800; color:var(--accent);"></span>
         </div>
 
-        <div style="text-transform:uppercase; font-weight:800; color:var(--text); opacity:0.4; font-size:10px; letter-spacing:1px; margin-bottom:10px;">Вероятности</div>
+        <div style="text-transform:uppercase; font-weight:800; color:var(--text); opacity:0.4; font-size:10px; letter-spacing:1px; margin-bottom:10px;">ВЕРОЯТНОСТИ</div>
         <div class="stat-grid">
-            <div class="stat-box">Эскалация<span class="stat-val">87%</span></div>
-            <div class="stat-box">Ядерный удар<span class="stat-val">4%</span></div>
-            <div class="stat-box">Наземная операция<span class="stat-val">42%</span></div>
+            <div class="stat-box">Эскалация сейчас<span class="stat-val">87%</span></div>
+            <div class="stat-box">Вероятность ядерного удара<span class="stat-val">4%</span></div>
+            <div class="stat-box">Вероятность наземной операции<span class="stat-val">42%</span></div>
             <div class="stat-box">Шанс Ирана защитить прибрежную зону<span class="stat-val">58%</span></div>
             <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2);">
                 Прогноз начала наземной операции: <span class="stat-val" style="display:inline; margin-left:10px;">{est_date} — 22.03</span>
@@ -78,26 +75,26 @@ def generate_static_summary(all_posts):
             <div class="stat-box">БПЛА/Ракеты (Иран+)<span class="stat-val" style="color:#ff9500;">{iran_hits}</span></div>
         </div>
 
+        <button onclick="location.reload()" style="width:100%; padding:12px; border-radius:15px; border:none; background:var(--accent); color:white; font-weight:700; margin:10px 0 20px 0; cursor:pointer; font-size:13px;">🔄 Обновить данные анализа</button>
+
         <div class="ai-text-block">
             <div class="summary-section">
                 На текущий час ситуация в регионе характеризуется переходом от демонстративных ударов к системному подавлению ПВО. 
-                <br><b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС через пустынные зоны. 
-                <br><b>Ормузский пролив:</b> Зафиксировано наращивание минных заграждений; страховые компании подняли тарифы на проход танкеров на 40%. 
-                <br><b>Рынки:</b> Нефть Brent тестирует отметку $92, в Дубае наблюдается повышенный спрос на частную авиацию и вывод активов (факты). 
-                <br><b>Реакция РФ:</b> Москва активизировала каналы связи с Тегераном и Тель-Авивом, предостерегая от ударов по ядерным объектам. 
-                <br><b>Наземная операция:</b> Вероятность оценивается в 42%. Ключевым маркером станет окончание развертывания логистических хабов США на Кипре. 
-                <br><b>Тактика сторон:</b> Иран в наземной фазе планирует использовать тактику «москитного флота» и мобильных ПТРК-групп для удержания прибрежных зон. 
-                <br><b>Мобилизация:</b> В Иране идет скрытый призыв резервистов первой очереди («Басидж»); к границам стянуто около 650к человек. 
+                <br><b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС. 
+                <br><b>Ормузский пролив:</b> Наращивание минных заграждений; тарифы страхования выросли на 40%. 
+                <br><b>Рынки:</b> Нефть Brent тестирует $92, в Дубае аномальный спрос на частную авиацию. 
+                <br><b>Реакция РФ:</b> Москва активизировала каналы связи, предостерегая от ударов по ядерным объектам. 
+                <br><b>Наземная операция:</b> Вероятность 42%. Ключевой маркер — завершение развертывания хабов на Кипре. 
             </div>
 
-            <div class="summary-section" style="margin-top:20px; padding:15px; background:rgba(0,122,255,0.06); border-radius:20px; border: 0.5px solid rgba(0,122,255,0.1);">
+            <div class="summary-section" style="margin-top:20px; padding:15px; background:rgba(0,122,255,0.06); border-radius:20px; border: 0.5px solid rgba(0,122,255,0.15);">
                 <b style="color:var(--accent); text-transform:uppercase; font-size:11px; letter-spacing:0.5px;">Оперативные данные и слухи</b>
-                <br><br><b>Неочевидные события:</b> Массовый сбой GPS-сигналов в Восточном Средиземноморье указывает на подготовку к крупному авиационному рейду. Замечено перемещение госпитальных судов США в сторону Кипра.
-                <br><b>Слухи:</b> В закрытых каналах обсуждается возможный ультиматум Ирана странам Персидского залива относительно использования их воздушного пространства. Сообщается о скрытой эвакуации семей дипломатов ряда стран ЕС.
+                <br><br><b>Неочевидные события:</b> Сбой GPS в Средиземноморье указывает на подготовку авиарейда. 
+                <br><b>Слухи:</b> Ультиматум Ирана странам Залива по ВПП. Скрытая эвакуация семей дипломатов ЕС.
             </div>
 
-            <div style="font-size:11px; opacity:0.5; margin-top:20px;">
-                Источники анализа: {sources_html}
+            <div style="font-size:11px; opacity:0.5; margin-top:15px; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 10px;">
+                База анализа: {sources_html}
             </div>
         </div>
     </div>
@@ -129,27 +126,21 @@ def aggregate():
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Intelligence Center</title>
     <style>
-        :root {{ --bg: #f2f2f7; --card: rgba(255,255,255,0.75); --text: #000; --accent: #007aff; --blur: blur(30px); }}
-        [data-theme="dark"] {{ --bg: #000; --card: rgba(28,28,30,0.75); --text: #fff; --accent: #0a84ff; }}
+        :root {{ --bg: #f2f2f7; --card: rgba(255,255,255,0.8); --text: #000; --accent: #007aff; --blur: blur(30px); }}
+        [data-theme="dark"] {{ --bg: #000; --card: rgba(28,28,30,0.8); --text: #fff; --accent: #0a84ff; }}
         body {{ background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; }}
-        header {{ position: sticky; top: 0; z-index: 1000; background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); }}
-        
-        .summary-card {{ background: var(--card); border-radius: 30px; padding: 25px; margin: 15px; border: 0.5px solid rgba(0,122,255,0.15); box-shadow: 0 15px 40px rgba(0,0,0,0.05); }}
+        header {{ position: sticky; top: 0; z-index: 1000; background: var(--card); backdrop-filter: var(--blur); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); }}
+        .summary-card {{ background: var(--card); border-radius: 30px; padding: 25px; margin: 15px; border: 0.5px solid rgba(0,122,255,0.15); }}
         .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }}
-        .stat-box {{ background: rgba(120,120,128,0.08); padding: 12px; border-radius: 18px; text-align: left; font-size: 13px; font-weight: 500; }}
-        .stat-val {{ display: block; font-size: 1.4em; font-weight: 800; color: var(--accent); margin-top: 4px; }}
-        
-        .ai-text-block {{ line-height: 1.6; font-size: 14px; }}
-        
-        .card {{ background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-radius: 24px; padding: 20px; margin: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.04); }}
+        .stat-box {{ background: rgba(120,120,128,0.1); padding: 12px; border-radius: 18px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; min-height: 70px; }}
+        .stat-val {{ font-size: 1.6em; font-weight: 800; color: var(--accent); margin-top: auto; }}
+        .ai-text-block {{ line-height: 1.6; font-size: 13.5px; }}
+        .card {{ background: var(--card); backdrop-filter: var(--blur); border-radius: 24px; padding: 20px; margin: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.04); }}
         .media-img {{ width: calc(100% + 40px); margin-left: -20px; margin-top: -20px; border-radius: 24px 24px 0 0; margin-bottom: 15px; display: block; }}
-        .content {{ line-height: 1.5; font-size: 16px; }}
-        
-        .footer-btns {{ margin-top: 18px; display: flex; align-items: center; gap: 25px; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 15px; }}
-        .btn-icon {{ background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; color: var(--text); opacity: 0.8; }}
-        
+        .footer-btns {{ margin-top: 18px; display: flex; align-items: center; gap: 30px; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 15px; }}
+        .btn-icon {{ background: none; border: none; cursor: pointer; color: var(--text); font-size: 1.5em; }}
         .tabs {{ display: flex; justify-content: space-around; background: var(--card); backdrop-filter: var(--blur); position: fixed; bottom: 0; width: 100%; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); }}
-        .tab {{ text-align: center; font-size: 10px; color: #8e8e93; text-decoration: none; flex: 1; font-weight: 600; }}
+        .tab {{ text-align: center; font-size: 10px; color: #8e8e93; text-decoration: none; flex: 1; font-weight: 700; }}
         .tab.active {{ color: var(--accent); }}
     </style>
 </head>
@@ -165,14 +156,24 @@ def aggregate():
     <div id="feed"></div>
 </div>
 <div class="tabs">
-    <a href="#" class="tab active" onclick="render('all', this)">📰<br>Сводка</a>
-    <a href="#" class="tab" onclick="render('fav', this)">⭐<br>Saved</a>
-    <a href="#" class="tab" onclick="render('archive', this)">📦<br>Архив</a>
+    <a href="#" class="tab active" onclick="render('all', this)">📰<br>СВОДКА</a>
+    <a href="#" class="tab" onclick="render('fav', this)">⭐<br>SAVED</a>
+    <a href="#" class="tab" onclick="render('archive', this)">📦<br>АРХИВ</a>
 </div>
 <script>
     const allPosts = {json.dumps(archive)};
     let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
     
+    // Функция для форматирования времени устройства
+    function formatDeviceTime(rawDate) {{
+        const d = rawDate ? new Date(rawDate) : new Date();
+        return new Intl.DateTimeFormat('ru-RU', {{
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+        }}).format(d).replace(',', '');
+    }}
+
+    document.getElementById('summary-time').innerText = formatDeviceTime();
+
     function toggleTheme() {{
         const curr = document.documentElement.getAttribute('data-theme');
         const next = curr === 'dark' ? 'light' : 'dark';
@@ -191,24 +192,16 @@ def aggregate():
         
         posts.forEach(p => {{
             const isFav = favorites.includes(p.id);
-            const d = new Date(p.date_raw);
-            const dateStr = d.toLocaleDateString('ru-RU', {{day: '2-digit', month: '2-digit'}});
-            const timeStr = d.toLocaleTimeString('ru-RU', {{hour: '2-digit', minute:'2-digit'}});
-            
             html += `<div class="card">
                 ${{p.media ? `<img src="${{p.media}}" class="media-img" loading="lazy">` : ''}}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span style="font-weight:700; color:var(--accent); font-size:0.9em;">${{p.full_name}}</span>
-                    <span style="opacity:0.4; font-size:0.8em; font-weight:600;">${{dateStr}} ${{timeStr}}</span>
+                    <span style="font-weight:800; color:var(--accent); font-size:0.9em;">@${{p.handle}}</span>
+                    <span style="opacity:0.4; font-size:0.85em; font-weight:700;">${{formatDeviceTime(p.date_raw)}}</span>
                 </div>
                 <div class="content">${{p.content}}</div>
                 <div class="footer-btns">
-                    <button class="btn-icon" onclick="toggleFav('${{p.id}}')" style="font-size: 1.4em;">
-                        ${{isFav?'⭐':'☆'}}
-                    </button>
-                    <a href="${{p.link}}" target="_blank" class="btn-icon" style="text-decoration:none;">
-                        <span style="font-size: 1.4em; line-height: 1;">⎋</span>
-                    </a>
+                    <button class="btn-icon" onclick="toggleFav('${{p.id}}')">${{isFav?'⭐':'☆'}}</button>
+                    <a href="${{p.link}}" target="_blank" class="btn-icon" style="text-decoration:none; line-height:1;">⎋</a>
                 </div>
             </div>`;
         }});
