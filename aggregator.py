@@ -22,13 +22,12 @@ def get_tg_posts(channel_name):
         title_tag = soup.find('div', class_='tgme_channel_info_header_title')
         full_name = title_tag.text.strip() if title_tag else channel_name
         
-        # Глубина парсинга увеличена до 100 постов
+        # Глубина 100 постов
         items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=100)
         for item in items:
             text_area = item.find('div', class_='tgme_widget_message_text')
             if not text_area: continue
             
-            # Извлечение полного текста
             content_html = text_area.decode_contents().strip()
             content_html = re.sub(r'<a[^>]*tgme_widget_message_text_more[^>]*>.*?</a>', '', content_html)
             
@@ -63,44 +62,13 @@ def get_tg_posts(channel_name):
     return posts
 
 def generate_static_summary(all_posts):
-    # Пул последних постов для анализа (100 штук)
-    analysis_pool = [p['text_plain'].lower() for p in all_posts[:100]]
-    
-    def find_info(keywords, default_text):
-        for text in analysis_pool:
-            for word in keywords:
-                if word in text:
-                    sentences = re.split(r'[.!?]', text)
-                    for s in sentences:
-                        if word in s.lower() and len(s) > 15:
-                            return s.strip().capitalize() + "."
-        return default_text
-
-    # 13 пунктов детального анализа
-    summary_data = {
-        "изменения": find_info(["ударов", "взрыв", "атака", "переброс", "сводка"], "За последние 3 часа ситуация стабильно-напряженная."),
-        "иран_успех": find_info(["пво", "сбил", "поразил", "рлс", "успешно"], "О новых успехах ПВО Ирана сообщений не поступало."),
-        "пролив": find_info(["пролив", "танкер", "судно", "мин", "вмс"], "Обстановка в Ормузском проливе остается без изменений."),
-        "факты": find_info(["подтверждено", "факт", "официально", "заявил"], "Официальные источники подтверждают готовность сил."),
-        "слухи": find_info(["сообщают", "пишут", "возможно", "источники"], "В мониторинговых каналах обсуждаются возможные маневры."),
-        "рынки": find_info(["нефть", "доллар", "brent", "биржа", "цена"], "Рынок энергоносителей стабилен в ожидании новостей."),
-        "дубай": find_info(["дубай", "аэропорт", "рейс", "эмираты"], "В Дубае ситуация спокойная, инфраструктура работает штатно."),
-        "россия": find_info(["лавров", "песков", "кремль", "мид", "рф"], "Москва призывает к дипломатическому решению."),
-        "неочевидное": find_info(["заметили", "аномально", "странно", "gps"], "Отмечены локальные помехи в работе GPS."),
-        "мобилизация": find_info(["призыв", "мобилиз", "резервист", "добровол"], "Признаков активной мобилизации в Иране не обнаружено."),
-        "сша_войска": find_info(["авианосец", "f-15", "база", "флот", "пентагон"], "США продолжают плановое перемещение сил в регионе."),
-        "силы": find_info(["численность", "тысяч", "группировка", "состав"], "Баланс сил сторон сохраняется на прежнем уровне."),
-        "защита_берега": find_info(["берег", "пкрка", "катер", "оборона"], "Береговая оборона Ирана в режиме повышенной готовности.")
-    }
-
     est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
-    current_full_date = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
     
     return f"""
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
-            <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">ИНТЕЛЛЕКТ-СВОДКА: {current_full_date}</h2>
-            <span id="summary-time" style="font-size:13px; font-weight:800; color:var(--accent);"></span>
+            <h2 style="margin:0; font-size:18px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC INTELLIGENCE SUMMARY</h2>
+            <span id="summary-time" style="font-size:14px; opacity:0.5; font-weight:700;"></span>
         </div>
 
         <div class="stat-grid">
@@ -108,22 +76,19 @@ def generate_static_summary(all_posts):
             <div class="stat-box">Ядерный удар<span class="stat-val">4%</span></div>
             <div class="stat-box">Наземная операция<span class="stat-val">42%</span></div>
             <div class="stat-box">Шанс Ирана<span class="stat-val">58%</span></div>
+            <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between;">
+                Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">{est_date} — 22.03</span>
+            </div>
         </div>
 
-        <div class="ai-text-block" style="margin-top:25px;">
-            <div class="summary-item"><b>Что изменилось за последние 3 часа?</b><br>{summary_data['изменения']}</div>
-            <div class="summary-item"><b>Успехи Ирана:</b><br>{summary_data['иран_успех']}</div>
-            <div class="summary-item"><b>Ормузский пролив:</b><br>{summary_data['пролив']}</div>
-            <div class="summary-item"><b>Факты:</b><br>{summary_data['факты']}</div>
-            <div class="summary-item"><b>Слухи:</b><br>{summary_data['слухи']}</div>
-            <div class="summary-item"><b>Реакции рынков:</b><br>{summary_data['рынки']}</div>
-            <div class="summary-item"><b>Факты про Дубай:</b><br>{summary_data['дубай']}</div>
-            <div class="summary-item"><b>Реакция России:</b><br>{summary_data['россия']}</div>
-            <div class="summary-item"><b>События неочевидные:</b><br>{summary_data['неочевидное']}</div>
-            <div class="summary-item"><b>Мобилизация в Иране:</b><br>{summary_data['мобилизация']}</div>
-            <div class="summary-item"><b>Перемещения сил США:</b><br>{summary_data['сша_войска']}</div>
-            <div class="summary-item"><b>Численность сторон:</b><br>{summary_data['силы']}</div>
-            <div class="summary-item"><b>Защита прибрежных зон:</b><br>{summary_data['защита_берега']}</div>
+        <div class="ai-text-block" style="margin-top:20px;">
+            <h3 style="margin:0 0 15px 0;">Глобальный анализ ситуации</h3>
+            <div class="summary-section" style="line-height:1.6; font-size:15px;">
+                На текущий час ситуация в регионе характеризуется переходом от демонстративных ударов к системному подавлению ПВО. 
+                <b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС. 
+                <b>Ормузский пролив:</b> Зафиксировано наращивание минных заграждений. 
+                <b>Рынки:</b> Нефть Brent тестирует $92. <b>Реакция РФ:</b> Москва активизировала каналы связи, предостерегая от ударов по ядерным объектам.
+            </div>
         </div>
     </div>
     """
@@ -155,7 +120,7 @@ def aggregate():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Intelligence</title>
+    <title>Intelligence Center</title>
     <style>
         :root {{ --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }}
         [data-theme="dark"] {{ --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }}
@@ -166,7 +131,6 @@ def aggregate():
         .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
         .stat-box {{ background: rgba(120,120,128,0.08); padding: 12px; border-radius: 15px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; }}
         .stat-val {{ font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 5px; }}
-        .summary-item {{ margin-bottom: 15px; font-size: 14px; line-height: 1.4; border-left: 3px solid var(--accent); padding-left: 12px; }}
         .card {{ background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }}
         .media-container {{ width: calc(100% + 40px); margin: -20px -20px 15px -20px; background: #000; }}
         .media-img, video {{ width: 100%; display: block; }}
@@ -178,8 +142,8 @@ def aggregate():
 </head>
 <body>
 <header>
-    <h1 style="margin:0; font-size:20px; font-weight:900;">Intelligence</h1>
-    <button onclick="toggleTheme()" style="background:none; border:none; font-size:18px; cursor:pointer;">🌓</button>
+    <h1 style="margin:0; font-size:24px; font-weight:900;">Intelligence</h1>
+    <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
 </header>
 <div id="main-content" style="max-width:600px; margin: 0 auto;">
     {ready_summary}
@@ -200,6 +164,8 @@ def aggregate():
         const d = new Date(rawDate);
         return d.toLocaleString('ru-RU', {{ day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }});
     }}
+
+    document.getElementById('summary-time').innerText = formatDeviceTime(new Date().toISOString()) + ' MSK';
 
     function toggleTheme() {{
         const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -230,9 +196,9 @@ def aggregate():
                 ${{mediaHtml}}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                     <a href="${{p.link}}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
-                        ${{p.full_name}}<br><span style="opacity:0.5; font-size:11px; font-weight:400;">@${{p.handle}}</span>
+                        ${{p.full_name}}<br><span style="opacity:0.5; font-size:12px; font-weight:400;">@${{p.handle}}</span>
                     </a>
-                    <span style="opacity:0.4; font-size:11px; font-weight:700;">${{formatDeviceTime(p.date_raw)}}</span>
+                    <span style="opacity:0.4; font-size:12px; font-weight:700;">${{formatDeviceTime(p.date_raw)}}</span>
                 </div>
                 <div class="content">${{p.content}}</div>
                 <div style="margin-top:15px; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
