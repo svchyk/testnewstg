@@ -1,51 +1,68 @@
-import os
 import feedparser
 import datetime
 
-# Получаем данные из секретов GitHub
-# Убедись, что в Settings -> Secrets они названы именно так!
-api_id = os.getenv('TG_API_ID')
-api_hash = os.getenv('TG_API_HASH')
-
-CHANNELS = [
+# Используем список разных зеркал для надежности
+SOURCES = [
     "https://rsshub.app/telegram/channel/chirpnews",
     "https://rsshub.app/telegram/channel/condottieros",
-    "https://rsshub.app/telegram/channel/infantmilitario"
+    "https://rsshub.app/telegram/channel/infantmilitario",
+    # Если rsshub не сработает, в будущем сюда можно добавить ссылки от других сервисов
 ]
 
 def aggregate():
-    if not api_id or not api_hash:
-        print(f"DEBUG: ID={api_id}, HASH={'set' if api_hash else 'None'}")
-        # Если секреты не подхватились, мы все равно попробуем скачать новости
-        # просто через RSS мост, чтобы страница не была пустой.
+    all_items = []
     
-    items = []
-    for url in CHANNELS:
-        print(f"Пытаюсь загрузить: {url}")
+    for url in SOURCES:
+        print(f"Запрос к: {url}")
         feed = feedparser.parse(url)
+        
+        if not feed.entries:
+            print(f"Источник {url} пуст или заблокирован.")
+            continue
+            
         for entry in feed.entries:
-            items.append({
-                'title': entry.title,
-                'link': entry.link,
-                'desc': entry.description,
-                'source': feed.feed.title if 'title' in feed.feed else 'Telegram',
-                'dt': entry.get('published', 'Недавно')
+            all_items.append({
+                'title': entry.get('title', 'Без заголовка'),
+                'link': entry.get('link', '#'),
+                'desc': entry.get('description', ''),
+                'source': feed.feed.get('title', url.split('/')[-1]),
+                'date': entry.get('published', '')
             })
-    
-    # Создаем HTML
+
+    # Сортируем (если есть дата)
+    all_items = all_items[:60]
+
+    # Генерируем HTML с более современным дизайном
     with open('index.html', 'w', encoding='utf-8') as f:
-        f.write('<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;max-width:700px;margin:auto;background:#f9f9f9;padding:20px;} .card{background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.05);} img{max-width:100%;height:auto;}</style></head><body>')
-        f.write(f'<h1>Лента новостей</h1><p>Обновлено: {datetime.datetime.now().strftime("%H:%M:%S")}</p>')
+        f.write('''
+        <html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: -apple-system, sans-serif; background: #eef2f5; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            h1 { text-align: center; color: #0088cc; }
+            .update-time { text-align: center; font-size: 0.8em; color: #777; margin-bottom: 20px; }
+            .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+            .card small { color: #0088cc; font-weight: bold; text-transform: uppercase; font-size: 0.7em; }
+            .card h3 { margin: 10px 0; font-size: 1.1em; line-height: 1.4; }
+            .card a { text-decoration: none; color: #222; }
+            .card .content { font-size: 0.95em; line-height: 1.5; color: #444; }
+            .card .content img { max-width: 100%; border-radius: 10px; margin-top: 10px; }
+        </style></head><body>
+        ''')
         
-        if not items:
-            f.write('<p>Данные пока не получены. Возможно, сервис временно занят. Попробуйте через 10 минут.</p>')
+        f.write(f'<h1>TG News Feed</h1>')
+        f.write(f'<div class="update-time">Обновлено: {datetime.datetime.now().strftime("%d.%m %H:%M:%S")}</div>')
         
-        for i in items[:50]:
+        if not all_items:
+            f.write('<div class="card" style="text-align:center;"><h3>Пока пусто</h3><p>Telegram временно ограничил доступ. Скрипт попробует снова через 15 минут автоматически.</p></div>')
+        
+        for item in all_items:
             f.write(f'<div class="card">')
-            f.write(f'<small style="color:blue">{i["source"]} | {i["dt"]}</small>')
-            f.write(f'<h3><a href="{i["link"]}">{i["title"]}</a></h3>')
-            f.write(f'<div>{i["desc"]}</div>')
-            f.write('</div>')
+            f.write(f'<small>{item["source"]}</small>')
+            f.write(f'<h3><a href="{item["link"]}" target="_blank">{item["title"]}</a></h3>')
+            f.write(f'<div class="content">{item["desc"]}</div>')
+            f.write(f'</div>')
+            
         f.write('</body></html>')
 
 if __name__ == "__main__":
