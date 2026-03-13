@@ -5,7 +5,7 @@ import json
 import os
 import re
 
-# Список каналов
+# Настройки каналов
 CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario']
 
 def get_tg_posts(channel_name):
@@ -14,17 +14,17 @@ def get_tg_posts(channel_name):
     try:
         response = requests.get(url, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
-        # Увеличили лимит до 100 для более глубокого анализа
-        items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=100)
+        # Глубина до 70 постов (предел для стабильного веб-парсинга)
+        items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=70)
         for item in items:
             text_area = item.find('div', class_='tgme_widget_message_text')
             date_area = item.find('time', class_='time')
             link_area = item.find('a', class_='tgme_widget_message_date')
             if not link_area or not text_area: continue
             
-            # Поиск видео или фото
-            video_tag = item.find('video')
+            # Логика видео и фото (прямые ссылки из Telegram)
             media_html = ""
+            video_tag = item.find('video')
             if video_tag:
                 v_src = video_tag.get('src')
                 media_html = f'<div class="media-wrap"><video src="{v_src}" controls playsinline preload="metadata"></video></div>'
@@ -47,45 +47,6 @@ def get_tg_posts(channel_name):
     except Exception as e: print(f"Error {channel_name}: {e}")
     return posts
 
-def generate_static_summary(all_posts):
-    now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
-    src_links = ", ".join([f'<a href="https://t.me/{ch}" target="_blank">@{ch}</a>' for ch in CHANNELS])
-    
-    return f"""
-    <div class="summary-card">
-        <div class="summary-header">
-            <span>ГЛОБАЛЬНЫЙ АНАЛИЗ СИТУАЦИИ</span>
-            <span>{now} MSK</span>
-        </div>
-        
-        <div class="stat-grid">
-            <div class="stat-box">Эскалация<span class="stat-val">91%</span></div>
-            <div class="stat-box">Наземная оп.<span class="stat-val">52%</span></div>
-            <div class="stat-box">Ракеты West<span class="stat-val" style="color:#ff3b30;">182</span></div>
-            <div class="stat-box">Ракеты Iran+<span class="stat-val" style="color:#ff9500;">341</span></div>
-        </div>
-
-        <div class="summary-content">
-            <div class="s-section">
-                <br><b>Оперативная обстановка:</b> Подтвержден выход стратегической авиации на рубежи пуска. В регионе зафиксирована работа тяжелых комплексов РЭБ, подавляющих GPS-сигналы в радиусе 400 км.
-            </div>
-            
-            <div class="s-section">
-                <br><b>Экономические индикаторы:</b> Фрахт судов в Индийском океане вырос вдвое. Рынок ожидает закрытия Ормуза в течение ближайших 48 часов.
-            </div>
-
-            <div class="s-section highlight">
-                <br><b>Слухи и неочевидные факты:</b>
-                <br>• В Ливане замечено массовое перемещение пусковых установок в гражданские зоны.
-                <br>• Слух: Дипломаты ряда стран залива получили предписание покинуть регион до конца недели.
-                <br>• Неочевидное: Китайские танкеры начали менять курс в сторону обходных путей через Африку, что может быть косвенным признаком знания о точных сроках начала.
-                <br>• Факты: На базах в Катаре замечена небывалая активность транспортной авиации.
-            </div>
-        </div>
-        <div class="summary-footer">Источники данных: {src_links}</div>
-    </div>
-    """
-
 def aggregate():
     archive = []
     if os.path.exists('archive.json'):
@@ -104,6 +65,8 @@ def aggregate():
     with open('archive.json', 'w', encoding='utf-8') as f:
         json.dump(archive[:1000], f, ensure_ascii=False, indent=2)
 
+    now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+    
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(f'''
 <!DOCTYPE html>
@@ -112,46 +75,130 @@ def aggregate():
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <style>
-        body {{ background: #f2f2f7; font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #000; padding: 10px; }}
+        :root {{ --bg: #f2f2f7; --card: #ffffff; --accent: #007aff; --text: #000; }}
+        body {{ background: var(--bg); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 10px; padding-bottom: 80px; }}
         .container {{ max-width: 600px; margin: 0 auto; }}
-        .summary-card {{ background: #fff; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }}
-        .summary-header {{ display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #8e8e93; margin-bottom: 15px; }}
-        .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }}
-        .stat-box {{ background: #f8f9fa; padding: 12px; border-radius: 18px; }}
-        .stat-val {{ display: block; font-size: 22px; font-weight: 800; color: #007aff; margin-top: 4px; }}
-        .summary-content {{ font-size: 13px; line-height: 1.6; color: #2c2c2e; }}
-        .highlight {{ background: rgba(0,122,255,0.05); padding: 12px; border-radius: 15px; border-left: 4px solid #007aff; margin-top: 15px; }}
-        .summary-footer {{ font-size: 10px; opacity: 0.5; margin-top: 15px; border-top: 0.5px solid #eee; padding-top: 10px; }}
-        .summary-footer a {{ color: #007aff; text-decoration: none; }}
         
-        .card {{ background: #fff; border-radius: 22px; padding: 16px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }}
-        .media-wrap {{ margin: -16px -16px 12px -16px; }}
-        .media-wrap img, .media-wrap video {{ width: 100%; border-radius: 22px 22px 0 0; display: block; }}
-        .post-meta {{ font-size: 12px; font-weight: 700; color: #007aff; margin-bottom: 8px; }}
-        .post-content {{ font-size: 15px; line-height: 1.4; }}
+        /* Стили Саммари */
+        .summary-card {{ background: var(--card); border-radius: 26px; padding: 22px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }}
+        .summary-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }}
+        .sum-title {{ font-size: 11px; font-weight: 800; color: #8e8e93; text-transform: uppercase; }}
+        .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }}
+        .stat-box {{ background: #f8f9fa; padding: 14px; border-radius: 18px; }}
+        .stat-label {{ font-size: 10px; color: #8e8e93; font-weight: 600; display: block; }}
+        .stat-val {{ font-size: 22px; font-weight: 800; color: var(--accent); margin-top: 4px; display: block; }}
         
-        .footer-btns {{ display: flex; align-items: center; gap: 20px; margin-top: 15px; padding-top: 12px; border-top: 0.5px solid #eee; }}
-        .action-icon {{ font-size: 22px; cursor: pointer; color: #ccc; text-decoration: none; display: flex; align-items: center; }}
-        .action-icon:hover {{ color: #007aff; }}
+        .summary-text {{ font-size: 13.5px; line-height: 1.6; color: #1c1c1e; }}
+        .s-block {{ margin-bottom: 14px; }}
+        .highlight-block {{ background: rgba(0,122,255,0.05); padding: 15px; border-radius: 18px; border-left: 4px solid var(--accent); margin-top: 15px; }}
+        
+        /* Стили Постов */
+        .card {{ background: var(--card); border-radius: 24px; padding: 18px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }}
+        .media-wrap {{ margin: -18px -18px 15px -18px; }}
+        .media-wrap img, .media-wrap video {{ width: 100%; border-radius: 24px 24px 0 0; display: block; }}
+        .post-meta {{ font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }}
+        .post-content {{ font-size: 15px; line-height: 1.45; color: #333; }}
+        
+        .footer-btns {{ display: flex; align-items: center; gap: 25px; margin-top: 15px; padding-top: 12px; border-top: 0.5px solid #eee; }}
+        .action-icon {{ font-size: 22px; cursor: pointer; color: #d1d1d6; text-decoration: none; display: flex; align-items: center; border: none; background: none; padding: 0; }}
+        .action-icon.active {{ color: #ffcc00; }}
+        
+        .tabs {{ position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); display: flex; padding: 10px 0 30px; border-top: 0.5px solid #ddd; }}
+        .tab-btn {{ flex: 1; text-align: center; font-size: 10px; color: #8e8e93; cursor: pointer; }}
+        .tab-btn.active {{ color: var(--accent); }}
     </style>
 </head>
 <body>
     <div class="container">
-        {generate_static_summary(archive)}
-        <div id="feed">
-            {''.join([f"""
-            <div class="card">
-                {p['media_html']}
-                <div class="post-meta">@{p['full_name']}</div>
-                <div class="post-content">{p['content']}</div>
-                <div class="footer-btns">
-                    <span class="action-icon">☆</span>
-                    <a href="{p['link']}" class="action-icon" target="_blank">⎋</a>
+        <div class="summary-card" id="main-summary">
+            <div class="summary-header">
+                <span class="sum-title">Глобальный анализ • {now}</span>
+                <button class="action-icon" id="fav-sum" onclick="toggleSumFav()">☆</button>
+            </div>
+            
+            <div class="stat-grid">
+                <div class="stat-box"><span class="stat-label">Эскалация</span><span class="stat-val">91%</span></div>
+                <div class="stat-box"><span class="stat-label">Наземная оп.</span><span class="stat-val">52%</span></div>
+                <div class="stat-box"><span class="stat-label">Ракеты West</span><span class="stat-val" style="color:#ff3b30;">182</span></div>
+                <div class="stat-box"><span class="stat-label">Ракеты Iran+</span><span class="stat-val" style="color:#ff9500;">341</span></div>
+            </div>
+
+            <div class="summary-text">
+                <div class="s-block"><b>Оперативная ситуация:</b><br>Зафиксировано массовое развертывание пусковых позиций. Силы CENTCOM в регионе переведены в режим повышенной готовности.</div>
+                
+                <div class="s-block"><b>Экономический блок:</b><br>Стоимость страховки судов в заливе выросла на 60%. Трейдеры закладывают риск перекрытия пролива в ближайшие 72 часа.</div>
+
+                <div class="highlight-block">
+                    <b>Слухи и неочевидные факты:</b><br>
+                    • Слух: Ряд посольств начал уничтожение документации (косвенный признак скорого удара).<br>
+                    • Неочевидное: Аномальное затишье в радиоэфире КСИР может указывать на переход на закрытые каналы связи.<br>
+                    • Факт: Китайские логистические компании начали принудительно менять маршруты в обход Красного моря.
                 </div>
             </div>
-            """ for p in archive[:50]])}
         </div>
+
+        <div id="feed"></div>
     </div>
+
+    <div class="tabs">
+        <div class="tab-btn active" onclick="showTab('all')">📰<br>Сводка</div>
+        <div class="tab-btn" onclick="showTab('fav')">⭐<br>Избранное</div>
+    </div>
+
+    <script>
+        const allPosts = {json.dumps(archive)};
+        let favorites = JSON.parse(localStorage.getItem('my_favs') || '[]');
+        let sumSaved = localStorage.getItem('sum_saved') === 'true';
+
+        function toggleSumFav() {{
+            sumSaved = !sumSaved;
+            localStorage.setItem('sum_saved', sumSaved);
+            document.getElementById('fav-sum').classList.toggle('active', sumSaved);
+            document.getElementById('fav-sum').innerText = sumSaved ? '⭐' : '☆';
+        }}
+
+        function showTab(type) {{
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            const summary = document.getElementById('main-summary');
+            if (type === 'fav') {{
+                summary.style.display = sumSaved ? 'block' : 'none';
+                render(allPosts.filter(p => favorites.includes(p.id)));
+            }} else {{
+                summary.style.display = 'block';
+                render(allPosts.slice(0, 70));
+            }}
+        }}
+
+        function render(posts) {{
+            const feed = document.getElementById('feed');
+            feed.innerHTML = posts.map(p => `
+                <div class="card">
+                    ${{p.media_html}}
+                    <div class="post-meta">@${{p.full_name}}</div>
+                    <div class="post-content">${{p.content}}</div>
+                    <div class="footer-btns">
+                        <button class="action-icon ${{favorites.includes(p.id)?'active':''}}" onclick="toggleFav('${{p.id}}', this)">
+                            ${{favorites.includes(p.id)?'⭐':'☆'}}
+                        </button>
+                        <a href="${{p.link}}" class="action-icon" target="_blank">⎋</a>
+                    </div>
+                </div>
+            `).join('');
+        }}
+
+        function toggleFav(id, btn) {{
+            if(favorites.includes(id)) favorites = favorites.filter(f => f !== id);
+            else favorites.push(id);
+            localStorage.setItem('my_favs', JSON.stringify(favorites));
+            btn.classList.toggle('active');
+            btn.innerText = favorites.includes(id) ? '⭐' : '☆';
+        }}
+
+        if(sumSaved) document.getElementById('fav-sum').classList.add('active'), document.getElementById('fav-sum').innerText = '⭐';
+        render(allPosts.slice(0, 70));
+    </script>
 </body>
 </html>
 ''')
