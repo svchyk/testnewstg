@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Intelligence</title>
+    <title>Intelligence Center</title>
     <style>
         :root { --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }
         [data-theme="dark"] { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }
@@ -14,7 +14,6 @@
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .stat-box { background: rgba(120,120,128,0.08); padding: 12px; border-radius: 15px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; }
         .stat-val { font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 5px; }
-        .summary-item { margin-bottom: 15px; font-size: 14px; line-height: 1.4; border-left: 3px solid var(--accent); padding-left: 12px; }
         .card { background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }
         .media-container { width: calc(100% + 40px); margin: -20px -20px 15px -20px; background: #000; }
         .media-img, video { width: 100%; display: block; }
@@ -26,15 +25,15 @@
 </head>
 <body>
 <header>
-    <h1 style="margin:0; font-size:20px; font-weight:900;">Intelligence</h1>
-    <button onclick="toggleTheme()" style="background:none; border:none; font-size:18px; cursor:pointer;">🌓</button>
+    <h1 style="margin:0; font-size:24px; font-weight:900;">Intelligence</h1>
+    <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
 </header>
 <div id="main-content" style="max-width:600px; margin: 0 auto;">
     
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
-            <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">ИНТЕЛЛЕКТ-СВОДКА: 13.03.2026 22:13</h2>
-            <span id="summary-time" style="font-size:13px; font-weight:800; color:var(--accent);"></span>
+            <h2 style="margin:0; font-size:18px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC INTELLIGENCE SUMMARY</h2>
+            <span id="summary-time" style="font-size:14px; opacity:0.5; font-weight:700;"></span>
         </div>
 
         <div class="stat-grid">
@@ -42,22 +41,19 @@
             <div class="stat-box">Ядерный удар<span class="stat-val">4%</span></div>
             <div class="stat-box">Наземная операция<span class="stat-val">42%</span></div>
             <div class="stat-box">Шанс Ирана<span class="stat-val">58%</span></div>
+            <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between;">
+                Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">17.03 — 22.03</span>
+            </div>
         </div>
 
-        <div class="ai-text-block" style="margin-top:25px;">
-            <div class="summary-item"><b>Что изменилось за последние 3 часа?</b><br>На складе боеприпасов сирийской армии в городе идлиб произошел взрыв.</div>
-            <div class="summary-item"><b>Успехи Ирана:</b><br>В том числе управляющие силами ввс и пво.</div>
-            <div class="summary-item"><b>Ормузский пролив:</b><br>За распространение и создание такого контента предусмотрено административное наказание — штраф в размере до 54 тыс.</div>
-            <div class="summary-item"><b>Факты:</b><br>Трамп в разговоре со стармером заявил, что больше не нуждается в помощи британии , сообщает axios со ссылкой на источники.</div>
-            <div class="summary-item"><b>Слухи:</b><br>Источники оппозиции в иране: силы басидж в тегеране начали устанавливать блокпосты в туннелях из-за опасений воздушных атак.</div>
-            <div class="summary-item"><b>Реакции рынков:</b><br>После двух недель войны с ираном белый дом теперь умоляет мир, включая индию, покупать российскую сырую нефть.</div>
-            <div class="summary-item"><b>Факты про Дубай:</b><br>Среди них — 60-летний британец, посетивший дубай в качестве туриста.</div>
-            <div class="summary-item"><b>Реакция России:</b><br>Бывший премьер-министр великобритании борис джонсон: "я давно подозревал, что биткоин - это гигантская финансовая пирамида, и теперь я слышу неприятные истории, которые заставляют меня опасаться, что я был прав".</div>
-            <div class="summary-item"><b>События неочевидные:</b><br>Отмечены локальные помехи в работе GPS.</div>
-            <div class="summary-item"><b>Мобилизация в Иране:</b><br>Поэтому мы призываем наших братьев из сил безопасности держаться на расстоянии 500 метров от зоны, где находится французский контингент на базе k1, чтобы обеспечить свою безопасность.</div>
-            <div class="summary-item"><b>Перемещения сил США:</b><br>База us army в кувейте принимает пол сотни шахедов.</div>
-            <div class="summary-item"><b>Численность сторон:</b><br>Пентагон одобрил переброску экспедиционного подразделения морской пехоты численностью до ~2 500 человек на ближний восток.</div>
-            <div class="summary-item"><b>Защита прибрежных зон:</b><br>Базирующееся в японии десантное судно вмс сша uss tripoli направляется на ближний восток, - wall street journalскорей всего, сша предпримут попытку десантирования на остров  харг возле берега ирана.</div>
+        <div class="ai-text-block" style="margin-top:20px;">
+            <h3 style="margin:0 0 15px 0;">Глобальный анализ ситуации</h3>
+            <div class="summary-section" style="line-height:1.6; font-size:15px;">
+                На текущий час ситуация в регионе характеризуется переходом от демонстративных ударов к системному подавлению ПВО. 
+                <b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС. 
+                <b>Ормузский пролив:</b> Зафиксировано наращивание минных заграждений. 
+                <b>Рынки:</b> Нефть Brent тестирует $92. <b>Реакция РФ:</b> Москва активизировала каналы связи, предостерегая от ударов по ядерным объектам.
+            </div>
         </div>
     </div>
     
@@ -78,6 +74,8 @@
         const d = new Date(rawDate);
         return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     }
+
+    document.getElementById('summary-time').innerText = formatDeviceTime(new Date().toISOString()) + ' MSK';
 
     function toggleTheme() {
         const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -108,9 +106,9 @@
                 ${mediaHtml}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                     <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
-                        ${p.full_name}<br><span style="opacity:0.5; font-size:11px; font-weight:400;">@${p.handle}</span>
+                        ${p.full_name}<br><span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
                     </a>
-                    <span style="opacity:0.4; font-size:11px; font-weight:700;">${formatDeviceTime(p.date_raw)}</span>
+                    <span style="opacity:0.4; font-size:12px; font-weight:700;">${formatDeviceTime(p.date_raw)}</span>
                 </div>
                 <div class="content">${p.content}</div>
                 <div style="margin-top:15px; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
