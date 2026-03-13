@@ -1,2 +1,3 @@
-feedparser
+telethon
 feedgen
+python-dateutil
