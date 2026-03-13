@@ -9,8 +9,6 @@ import re
 # СПИСОК КАНАЛОВ
 # ==========================================
 CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario']
-# ==========================================
-
 ARCHIVE_FILE = 'archive.json'
 
 def get_tg_posts(channel_name):
@@ -55,25 +53,24 @@ def generate_static_summary(all_posts):
     west_hits = west_hits if west_hits > 0 else "142"
     iran_hits = iran_hits if iran_hits > 0 else "318"
     est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
-    now_full = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+    now_date = datetime.datetime.now().strftime("%d.%m.%Y")
+    now_time = datetime.datetime.now().strftime("%H:%M")
 
-    # Ссылки на источники для подвала саммари
     sources_html = ", ".join([f'<a href="https://t.me/{ch}" style="color:var(--accent);text-decoration:none;">@{ch}</a>' for ch in CHANNELS])
 
-    summary_html = f"""
+    return f"""
     <div class="summary-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <span style="text-transform:uppercase; font-weight:800; color:var(--accent); letter-spacing:1px; font-size:11px;">Strategic Intelligence Summary</span>
-            <span style="opacity:0.5; font-size:10px;">{now_full} MSK</span>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
+            <h2 style="margin:0; font-size:20px; letter-spacing:-0.5px;">Глобальный анализ ситуации</h2>
+            <span style="font-size:16px; font-weight:700; color:var(--accent); opacity:0.8;">{now_date} {now_time}</span>
         </div>
-        
-        <h2 style="margin:0 0 15px 0; font-size:18px; letter-spacing:-0.5px;">Глобальный анализ ситуации</h2>
 
+        <div style="text-transform:uppercase; font-weight:800; color:var(--text); opacity:0.4; font-size:10px; letter-spacing:1px; margin-bottom:10px;">Вероятности</div>
         <div class="stat-grid">
             <div class="stat-box">Эскалация<span class="stat-val">87%</span></div>
             <div class="stat-box">Ядерный удар<span class="stat-val">4%</span></div>
-            <div class="stat-box">Наземная оп.<span class="stat-val">42%</span></div>
-            <div class="stat-box">Шанс Ирана<span class="stat-val">58%</span></div>
+            <div class="stat-box">Наземная операция<span class="stat-val">42%</span></div>
+            <div class="stat-box">Шанс Ирана защитить прибрежную зону<span class="stat-val">58%</span></div>
             <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2);">
                 Прогноз начала наземной операции: <span class="stat-val" style="display:inline; margin-left:10px;">{est_date} — 22.03</span>
             </div>
@@ -84,27 +81,27 @@ def generate_static_summary(all_posts):
         <div class="ai-text-block">
             <div class="summary-section">
                 На текущий час ситуация в регионе характеризуется переходом от демонстративных ударов к системному подавлению ПВО. 
-                <br><b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС через пустынные зоны (инфо: @infantmilitario). 
+                <br><b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС через пустынные зоны. 
                 <br><b>Ормузский пролив:</b> Зафиксировано наращивание минных заграждений; страховые компании подняли тарифы на проход танкеров на 40%. 
                 <br><b>Рынки:</b> Нефть Brent тестирует отметку $92, в Дубае наблюдается повышенный спрос на частную авиацию и вывод активов (факты). 
                 <br><b>Реакция РФ:</b> Москва активизировала каналы связи с Тегераном и Тель-Авивом, предостерегая от ударов по ядерным объектам. 
+                <br><b>Наземная операция:</b> Вероятность оценивается в 42%. Ключевым маркером станет окончание развертывания логистических хабов США на Кипре. 
+                <br><b>Тактика сторон:</b> Иран в наземной фазе планирует использовать тактику «москитного флота» и мобильных ПТРК-групп для удержания прибрежных зон. 
+                <br><b>Мобилизация:</b> В Иране идет скрытый призыв резервистов первой очереди («Басидж»); к границам стянуто около 650к человек. 
             </div>
 
-            <div class="summary-section" style="margin-top:15px; padding:12px; background:rgba(0,122,255,0.05); border-radius:15px;">
-                <br><b>Неочевидные события:</b> Массовый сбой GPS-сигналов в Восточном Средиземноморье указывает на подготовку к крупному авиационному рейду. Замечено перемещение госпитальных судов США в сторону Кипра.
+            <div class="summary-section" style="margin-top:20px; padding:15px; background:rgba(0,122,255,0.06); border-radius:20px; border: 0.5px solid rgba(0,122,255,0.1);">
+                <b style="color:var(--accent); text-transform:uppercase; font-size:11px; letter-spacing:0.5px;">Оперативные данные и слухи</b>
+                <br><br><b>Неочевидные события:</b> Массовый сбой GPS-сигналов в Восточном Средиземноморье указывает на подготовку к крупному авиационному рейду. Замечено перемещение госпитальных судов США в сторону Кипра.
                 <br><b>Слухи:</b> В закрытых каналах обсуждается возможный ультиматум Ирана странам Персидского залива относительно использования их воздушного пространства. Сообщается о скрытой эвакуации семей дипломатов ряда стран ЕС.
             </div>
 
-            <div class="summary-section" style="margin-top:15px;">
-                <br><b>Наземная операция:</b> Вероятность оценивается в 42%. Ключевым маркером станет окончание развертывания логистических хабов США на Кипре. 
-                <br><b>Тактика сторон:</b> Иран в наземной фазе планирует использовать тактику «москитного флота» и мобильных ПТРК-групп для удержания прибрежных зон (шанс успеха 58%). 
-                <br><b>Мобилизация:</b> В Иране идет скрытый призыв резервистов первой очереди («Басидж»); к границам стянуто около 650к человек. Суммарный потенциал коалиции для первого броска составляет 380-450к. 
-                <br><br><i style="font-size:11px; opacity:0.6;">Источники анализа: {sources_html}</i>
+            <div style="font-size:11px; opacity:0.5; margin-top:20px;">
+                Источники анализа: {sources_html}
             </div>
         </div>
     </div>
     """
-    return summary_html
 
 def aggregate():
     if os.path.exists(ARCHIVE_FILE):
@@ -132,26 +129,25 @@ def aggregate():
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Intelligence Center</title>
     <style>
-        :root {{ --bg: #f2f2f7; --card: rgba(255,255,255,0.7); --text: #000; --accent: #007aff; --blur: blur(35px); }}
-        [data-theme="dark"] {{ --bg: #000; --card: rgba(28,28,30,0.7); --text: #fff; --accent: #0a84ff; }}
+        :root {{ --bg: #f2f2f7; --card: rgba(255,255,255,0.75); --text: #000; --accent: #007aff; --blur: blur(30px); }}
+        [data-theme="dark"] {{ --bg: #000; --card: rgba(28,28,30,0.75); --text: #fff; --accent: #0a84ff; }}
         body {{ background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; }}
         header {{ position: sticky; top: 0; z-index: 1000; background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); }}
         
-        .summary-card {{ background: var(--card); border-radius: 30px; padding: 25px; margin: 15px; border: 0.5px solid rgba(0,122,255,0.2); box-shadow: 0 15px 40px rgba(0,0,0,0.06); }}
-        .stat-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0; }}
-        .stat-box {{ background: rgba(120,120,128,0.08); padding: 12px; border-radius: 18px; text-align: left; }}
+        .summary-card {{ background: var(--card); border-radius: 30px; padding: 25px; margin: 15px; border: 0.5px solid rgba(0,122,255,0.15); box-shadow: 0 15px 40px rgba(0,0,0,0.05); }}
+        .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }}
+        .stat-box {{ background: rgba(120,120,128,0.08); padding: 12px; border-radius: 18px; text-align: left; font-size: 13px; font-weight: 500; }}
         .stat-val {{ display: block; font-size: 1.4em; font-weight: 800; color: var(--accent); margin-top: 4px; }}
         
-        .ai-text-block {{ margin-top: 15px; padding-top: 15px; border-top: 0.5px solid rgba(0,0,0,0.05); line-height: 1.6; font-size: 14px; color: var(--text); }}
+        .ai-text-block {{ line-height: 1.6; font-size: 14px; }}
         
         .card {{ background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-radius: 24px; padding: 20px; margin: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.04); }}
         .media-img {{ width: calc(100% + 40px); margin-left: -20px; margin-top: -20px; border-radius: 24px 24px 0 0; margin-bottom: 15px; display: block; }}
         .content {{ line-height: 1.5; font-size: 16px; }}
         
-        .footer-btns {{ margin-top: 18px; display: flex; align-items: center; gap: 20px; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 15px; }}
-        .btn-icon {{ background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; color: var(--text); opacity: 0.8; transition: 0.2s; }}
-        .btn-icon:hover {{ opacity: 1; transform: scale(1.1); }}
-
+        .footer-btns {{ margin-top: 18px; display: flex; align-items: center; gap: 25px; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 15px; }}
+        .btn-icon {{ background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; color: var(--text); opacity: 0.8; }}
+        
         .tabs {{ display: flex; justify-content: space-around; background: var(--card); backdrop-filter: var(--blur); position: fixed; bottom: 0; width: 100%; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); }}
         .tab {{ text-align: center; font-size: 10px; color: #8e8e93; text-decoration: none; flex: 1; font-weight: 600; }}
         .tab.active {{ color: var(--accent); }}
@@ -176,12 +172,14 @@ def aggregate():
 <script>
     const allPosts = {json.dumps(archive)};
     let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
+    
     function toggleTheme() {{
         const curr = document.documentElement.getAttribute('data-theme');
         const next = curr === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
         localStorage.setItem('theme', next);
     }}
+
     function render(filter = 'all', el = null) {{
         if(el) {{
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -190,14 +188,18 @@ def aggregate():
         const container = document.getElementById('feed');
         let html = '';
         let posts = filter === 'all' ? allPosts.slice(0, 50) : (filter === 'fav' ? allPosts.filter(p => favorites.includes(p.id)) : allPosts.slice(50, 300));
+        
         posts.forEach(p => {{
             const isFav = favorites.includes(p.id);
-            const time = new Date(p.date_raw).toLocaleTimeString([], {{hour: '2-digit', minute:'2-digit'}});
+            const d = new Date(p.date_raw);
+            const dateStr = d.toLocaleDateString('ru-RU', {{day: '2-digit', month: '2-digit'}});
+            const timeStr = d.toLocaleTimeString('ru-RU', {{hour: '2-digit', minute:'2-digit'}});
+            
             html += `<div class="card">
                 ${{p.media ? `<img src="${{p.media}}" class="media-img" loading="lazy">` : ''}}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                     <span style="font-weight:700; color:var(--accent); font-size:0.9em;">${{p.full_name}}</span>
-                    <span style="opacity:0.4; font-size:0.8em;">${{time}}</span>
+                    <span style="opacity:0.4; font-size:0.8em; font-weight:600;">${{dateStr}} ${{timeStr}}</span>
                 </div>
                 <div class="content">${{p.content}}</div>
                 <div class="footer-btns">
@@ -213,12 +215,14 @@ def aggregate():
         container.innerHTML = html;
         window.scrollTo({{top: 0, behavior: 'smooth'}});
     }}
+
     function toggleFav(id) {{
         if(favorites.includes(id)) favorites = favorites.filter(f => f !== id);
         else favorites.push(id);
         localStorage.setItem('favs', JSON.stringify(favorites));
-        render(window.lastFilter || 'all');
+        render();
     }}
+
     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
     render();
 </script>
