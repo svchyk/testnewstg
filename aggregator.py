@@ -1,67 +1,67 @@
-import feedparser
+import requests
+from bs4 import BeautifulSoup
 import datetime
 
-# Используем список разных зеркал для надежности
-SOURCES = [
-    "https://rsshub.app/telegram/channel/chirpnews",
-    "https://rsshub.app/telegram/channel/condottieros",
-    "https://rsshub.app/telegram/channel/infantmilitario",
-    # Если rsshub не сработает, в будущем сюда можно добавить ссылки от других сервисов
-]
+# Список только имен каналов (без t.me/)
+CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario']
+
+def get_tg_posts(channel_name):
+    posts = []
+    # Прямой адрес веб-витрины Телеграма
+    url = f"https://t.me/s/{channel_name}"
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Ищем блоки с сообщениями
+        items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=10)
+        
+        for item in items:
+            text_area = item.find('div', class_='tgme_widget_message_text')
+            date_area = item.find('time', class_='time')
+            link_area = item.find('a', class_='tgme_widget_message_date')
+            
+            if text_area:
+                posts.append({
+                    'title': text_area.text[:80] + '...',
+                    'content': str(text_area),
+                    'date': date_area.get('datetime') if date_area else '',
+                    'link': link_area.get('href') if link_area else f"https://t.me/{channel_name}",
+                    'source': channel_name
+                })
+    except Exception as e:
+        print(f"Ошибка при чтении {channel_name}: {e}")
+    return posts
 
 def aggregate():
-    all_items = []
-    
-    for url in SOURCES:
-        print(f"Запрос к: {url}")
-        feed = feedparser.parse(url)
-        
-        if not feed.entries:
-            print(f"Источник {url} пуст или заблокирован.")
-            continue
-            
-        for entry in feed.entries:
-            all_items.append({
-                'title': entry.get('title', 'Без заголовка'),
-                'link': entry.get('link', '#'),
-                'desc': entry.get('description', ''),
-                'source': feed.feed.get('title', url.split('/')[-1]),
-                'date': entry.get('published', '')
-            })
+    all_posts = []
+    for ch in CHANNELS:
+        print(f"Читаю напрямую: {ch}")
+        all_posts.extend(get_tg_posts(ch))
 
-    # Сортируем (если есть дата)
-    all_items = all_items[:60]
+    # Сортировка по дате (если она есть)
+    all_posts.sort(key=lambda x: x['date'], reverse=True)
 
-    # Генерируем HTML с более современным дизайном
     with open('index.html', 'w', encoding='utf-8') as f:
-        f.write('''
-        <html><head><meta charset="utf-8">
+        f.write('''<html><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: -apple-system, sans-serif; background: #eef2f5; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-            h1 { text-align: center; color: #0088cc; }
-            .update-time { text-align: center; font-size: 0.8em; color: #777; margin-bottom: 20px; }
-            .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-            .card small { color: #0088cc; font-weight: bold; text-transform: uppercase; font-size: 0.7em; }
-            .card h3 { margin: 10px 0; font-size: 1.1em; line-height: 1.4; }
-            .card a { text-decoration: none; color: #222; }
-            .card .content { font-size: 0.95em; line-height: 1.5; color: #444; }
-            .card .content img { max-width: 100%; border-radius: 10px; margin-top: 10px; }
-        </style></head><body>
-        ''')
+            body { font-family: sans-serif; background: #f4f7f9; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+            .source { color: #0088cc; font-weight: bold; font-size: 0.9em; }
+            .date { color: #999; font-size: 0.8em; float: right; }
+            a { text-decoration: none; color: #333; }
+        </style></head><body>''')
         
-        f.write(f'<h1>TG News Feed</h1>')
-        f.write(f'<div class="update-time">Обновлено: {datetime.datetime.now().strftime("%d.%m %H:%M:%S")}</div>')
+        f.write(f'<h1>Прямая лента Telegram</h1><p>Обновлено: {datetime.datetime.now().strftime("%H:%M")}</p>')
         
-        if not all_items:
-            f.write('<div class="card" style="text-align:center;"><h3>Пока пусто</h3><p>Telegram временно ограничил доступ. Скрипт попробует снова через 15 минут автоматически.</p></div>')
-        
-        for item in all_items:
+        for p in all_posts[:30]:
             f.write(f'<div class="card">')
-            f.write(f'<small>{item["source"]}</small>')
-            f.write(f'<h3><a href="{item["link"]}" target="_blank">{item["title"]}</a></h3>')
-            f.write(f'<div class="content">{item["desc"]}</div>')
-            f.write(f'</div>')
+            f.write(f'<span class="source">@{p["source"]}</span>')
+            f.write(f'<span class="date">{p["date"][:10] if p["date"] else ""}</span>')
+            f.write(f'<h3><a href="{p["link"]}" target="_blank">{p["title"]}</a></h3>')
+            f.write(f'<div>{p["content"]}</div>')
+            f.write('</div>')
             
         f.write('</body></html>')
 
