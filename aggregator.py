@@ -8,7 +8,7 @@ import re
 # ==========================================
 # СПИСОК КАНАЛОВ И НАСТРОЙКИ
 # ==========================================
-CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario', 'victorstepanych', 'varlamov']
+CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario', 'victorstepanych', 'varlamov_news']
 ARCHIVE_FILE = 'archive.json'
 
 def get_tg_posts(channel_name):
