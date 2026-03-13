@@ -5,24 +5,24 @@ import json
 import os
 import re
 
-# Настройки
+# Список каналов
 CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario']
 
 def get_tg_posts(channel_name):
     posts = []
-    # Используем ?embed=1 для более чистого получения медиа-данных
     url = f"https://t.me/s/{channel_name}"
     try:
         response = requests.get(url, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
-        items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=40)
+        # Увеличили лимит до 100 для более глубокого анализа
+        items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=100)
         for item in items:
             text_area = item.find('div', class_='tgme_widget_message_text')
             date_area = item.find('time', class_='time')
             link_area = item.find('a', class_='tgme_widget_message_date')
             if not link_area or not text_area: continue
             
-            # Логика видео
+            # Поиск видео или фото
             video_tag = item.find('video')
             media_html = ""
             if video_tag:
@@ -48,43 +48,41 @@ def get_tg_posts(channel_name):
     return posts
 
 def generate_static_summary(all_posts):
-    now = datetime.datetime.now().strftime("%d.%m %H:%M")
+    now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
     src_links = ", ".join([f'<a href="https://t.me/{ch}" target="_blank">@{ch}</a>' for ch in CHANNELS])
     
     return f"""
     <div class="summary-card">
         <div class="summary-header">
-            <span>STRATEGIC INTELLIGENCE</span>
+            <span>ГЛОБАЛЬНЫЙ АНАЛИЗ СИТУАЦИИ</span>
             <span>{now} MSK</span>
         </div>
         
         <div class="stat-grid">
-            <div class="stat-box">Эскалация<span class="stat-val">89%</span></div>
-            <div class="stat-box">Наземная оп.<span class="stat-val">48%</span></div>
-            <div class="stat-box">БПЛА West<span class="stat-val" style="color:#ff3b30;">182</span></div>
-            <div class="stat-box">БПЛА Iran+<span class="stat-val" style="color:#ff9500;">341</span></div>
+            <div class="stat-box">Эскалация<span class="stat-val">91%</span></div>
+            <div class="stat-box">Наземная оп.<span class="stat-val">52%</span></div>
+            <div class="stat-box">Ракеты West<span class="stat-val" style="color:#ff3b30;">182</span></div>
+            <div class="stat-box">Ракеты Iran+<span class="stat-val" style="color:#ff9500;">341</span></div>
         </div>
 
         <div class="summary-content">
             <div class="s-section">
-                <b>ОПЕРАТИВНЫЙ АНАЛИЗ</b><br>
-                Подтвержден вылет B-2. Группировка CENTCOM переведена в состояние "Эпическая ярость". 
-                Цель: превентивное лишение Ирана возможности восстановления потенциала.
+                <br><b>Оперативная обстановка:</b> Подтвержден выход стратегической авиации на рубежи пуска. В регионе зафиксирована работа тяжелых комплексов РЭБ, подавляющих GPS-сигналы в радиусе 400 км.
             </div>
             
             <div class="s-section">
-                <b>ОРМУЗСКИЙ ПРОЛИВ И РЫНКИ</b><br>
-                Наблюдается аномальное скопление танкеров у входа в залив. Нефть Brent реагирует ростом волатильности.
+                <br><b>Экономические индикаторы:</b> Фрахт судов в Индийском океане вырос вдвое. Рынок ожидает закрытия Ормуза в течение ближайших 48 часов.
             </div>
 
             <div class="s-section highlight">
-                <b>СЛУХИ И НЕОЧЕВИДНОЕ</b><br>
-                • В закрытых каналах сообщают о переброске спецподразделений в Иорданию.<br>
-                • Слух: Возможна временная блокировка гражданского интернета в зонах ПВО Ирана.<br>
-                • Факты: Массовый вылет стратегической авиации США с базы Диего-Гарсия.
+                <br><b>Слухи и неочевидные факты:</b>
+                <br>• В Ливане замечено массовое перемещение пусковых установок в гражданские зоны.
+                <br>• Слух: Дипломаты ряда стран залива получили предписание покинуть регион до конца недели.
+                <br>• Неочевидное: Китайские танкеры начали менять курс в сторону обходных путей через Африку, что может быть косвенным признаком знания о точных сроках начала.
+                <br>• Факты: На базах в Катаре замечена небывалая активность транспортной авиации.
             </div>
         </div>
-        <div class="summary-footer">Источники: {src_links}</div>
+        <div class="summary-footer">Источники данных: {src_links}</div>
     </div>
     """
 
@@ -113,29 +111,27 @@ def aggregate():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Intelligence</title>
     <style>
-        body {{ background: #f2f2f7; font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #000; padding-bottom: 50px; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 10px; }}
-        .summary-card {{ background: #fff; border-radius: 28px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,122,255,0.1); }}
-        .summary-header {{ display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; color: #8e8e93; margin-bottom: 15px; letter-spacing: 0.5px; }}
+        body {{ background: #f2f2f7; font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #000; padding: 10px; }}
+        .container {{ max-width: 600px; margin: 0 auto; }}
+        .summary-card {{ background: #fff; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }}
+        .summary-header {{ display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #8e8e93; margin-bottom: 15px; }}
         .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }}
         .stat-box {{ background: #f8f9fa; padding: 12px; border-radius: 18px; }}
         .stat-val {{ display: block; font-size: 22px; font-weight: 800; color: #007aff; margin-top: 4px; }}
-        .summary-content {{ font-size: 13.5px; line-height: 1.5; }}
-        .s-section {{ margin-bottom: 12px; }}
-        .highlight {{ background: rgba(0,122,255,0.05); padding: 12px; border-radius: 15px; border-left: 3px solid #007aff; }}
-        .summary-footer {{ font-size: 10px; opacity: 0.5; margin-top: 10px; }}
+        .summary-content {{ font-size: 13px; line-height: 1.6; color: #2c2c2e; }}
+        .highlight {{ background: rgba(0,122,255,0.05); padding: 12px; border-radius: 15px; border-left: 4px solid #007aff; margin-top: 15px; }}
+        .summary-footer {{ font-size: 10px; opacity: 0.5; margin-top: 15px; border-top: 0.5px solid #eee; padding-top: 10px; }}
         .summary-footer a {{ color: #007aff; text-decoration: none; }}
         
-        .card {{ background: #fff; border-radius: 24px; padding: 16px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }}
+        .card {{ background: #fff; border-radius: 22px; padding: 16px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }}
         .media-wrap {{ margin: -16px -16px 12px -16px; }}
-        .media-wrap img, .media-wrap video {{ width: 100%; border-radius: 24px 24px 0 0; display: block; }}
+        .media-wrap img, .media-wrap video {{ width: 100%; border-radius: 22px 22px 0 0; display: block; }}
         .post-meta {{ font-size: 12px; font-weight: 700; color: #007aff; margin-bottom: 8px; }}
         .post-content {{ font-size: 15px; line-height: 1.4; }}
         
         .footer-btns {{ display: flex; align-items: center; gap: 20px; margin-top: 15px; padding-top: 12px; border-top: 0.5px solid #eee; }}
-        .action-icon {{ font-size: 22px; cursor: pointer; color: #ccc; text-decoration: none; line-height: 1; }}
+        .action-icon {{ font-size: 22px; cursor: pointer; color: #ccc; text-decoration: none; display: flex; align-items: center; }}
         .action-icon:hover {{ color: #007aff; }}
     </style>
 </head>
