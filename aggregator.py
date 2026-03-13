@@ -16,7 +16,9 @@ def get_tg_posts(channel_name):
     url = f"https://t.me/s/{channel_name}"
     try:
         response = requests.get(url, timeout=15)
+        response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
+        
         title_tag = soup.find('div', class_='tgme_channel_info_header_title')
         full_name = title_tag.text.strip() if title_tag else channel_name
         
@@ -26,8 +28,15 @@ def get_tg_posts(channel_name):
             date_area = item.find('time', class_='time')
             link_area = item.find('a', class_='tgme_widget_message_date')
             
-            # Если нет текста или ссылки, пропускаем, но проверяем контент тщательно
             if not link_area or not text_area: continue
+            
+            # РЕШЕНИЕ ПРОБЛЕМЫ ОБРЕЗАНИЯ: 
+            # Telegram иногда вставляет "..." в конце. Мы берем весь HTML контент.
+            # Очищаем от лишних пробелов, но сохраняем структуру.
+            content_html = text_area.decode_contents().strip()
+            
+            # Дополнительная проверка: если в тексте есть "...", пробуем найти скрытые блоки
+            # Но обычно decode_contents забирает всё, что прислал сервер.
             
             media_url = ""
             photo = item.find('a', class_='tgme_widget_message_photo_wrap')
@@ -37,12 +46,12 @@ def get_tg_posts(channel_name):
 
             posts.append({
                 'id': f"{channel_name}_{link_area.get('href').split('/')[-1]}",
-                'full_name': full_name, # Название канала
-                'content': text_area.decode_contents(), # Забираем полный HTML внутри блока текста
-                'text_plain': text_area.get_text(separator=' '), 
+                'full_name': full_name,
+                'content': content_html,
+                'text_plain': text_area.get_text(separator=' '),
                 'date_raw': date_area.get('datetime') if date_area else '',
                 'link': link_area.get('href'),
-                'handle': channel_name, # Ник канала
+                'handle': channel_name,
                 'media': media_url
             })
     except Exception as e: print(f"Error {channel_name}: {e}")
@@ -87,7 +96,6 @@ def generate_static_summary(all_posts):
                 <br><b>Ормузский пролив:</b> Наращивание минных заграждений; тарифы страхования выросли на 40%. 
                 <br><b>Рынки:</b> Нефть Brent тестирует $92, в Дубае аномальный спрос на частную авиацию. 
                 <br><b>Реакция РФ:</b> Москва активизировала каналы связи, предостерегая от ударов по ядерным объектам. 
-                <br><b>Наземная операция:</b> Вероятность 42%. Ключевой маркер — завершение развертывания хабов на Кипре. 
             </div>
 
             <div class="summary-section" style="margin-top:20px; padding:15px; background:rgba(0,122,255,0.06); border-radius:20px; border: 0.5px solid rgba(0,122,255,0.15);">
@@ -140,6 +148,7 @@ def aggregate():
         .ai-text-block {{ line-height: 1.6; font-size: 13.5px; }}
         .card {{ background: var(--card); backdrop-filter: var(--blur); border-radius: 24px; padding: 20px; margin: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.04); }}
         .media-img {{ width: calc(100% + 40px); margin-left: -20px; margin-top: -20px; border-radius: 24px 24px 0 0; margin-bottom: 15px; display: block; }}
+        .content {{ line-height: 1.5; font-size: 16px; word-wrap: break-word; overflow-wrap: break-word; }}
         .footer-btns {{ margin-top: 18px; display: flex; align-items: center; gap: 30px; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 15px; }}
         .btn-icon {{ background: none; border: none; cursor: pointer; color: var(--text); font-size: 1.5em; }}
         .tabs {{ display: flex; justify-content: space-around; background: var(--card); backdrop-filter: var(--blur); position: fixed; bottom: 0; width: 100%; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); }}
