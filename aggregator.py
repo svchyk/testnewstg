@@ -19,11 +19,14 @@ def get_tg_posts(channel_name):
         soup = BeautifulSoup(response.text, 'html.parser')
         title_tag = soup.find('div', class_='tgme_channel_info_header_title')
         full_name = title_tag.text.strip() if title_tag else channel_name
+        
         items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=25)
         for item in items:
             text_area = item.find('div', class_='tgme_widget_message_text')
             date_area = item.find('time', class_='time')
             link_area = item.find('a', class_='tgme_widget_message_date')
+            
+            # Если нет текста или ссылки, пропускаем, но проверяем контент тщательно
             if not link_area or not text_area: continue
             
             media_url = ""
@@ -34,12 +37,12 @@ def get_tg_posts(channel_name):
 
             posts.append({
                 'id': f"{channel_name}_{link_area.get('href').split('/')[-1]}",
-                'full_name': full_name,
-                'content': text_area.decode_contents(),
-                'text_plain': text_area.text,
+                'full_name': full_name, # Название канала
+                'content': text_area.decode_contents(), # Забираем полный HTML внутри блока текста
+                'text_plain': text_area.get_text(separator=' '), 
                 'date_raw': date_area.get('datetime') if date_area else '',
                 'link': link_area.get('href'),
-                'handle': channel_name,
+                'handle': channel_name, # Ник канала
                 'media': media_url
             })
     except Exception as e: print(f"Error {channel_name}: {e}")
@@ -142,6 +145,7 @@ def aggregate():
         .tabs {{ display: flex; justify-content: space-around; background: var(--card); backdrop-filter: var(--blur); position: fixed; bottom: 0; width: 100%; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); }}
         .tab {{ text-align: center; font-size: 10px; color: #8e8e93; text-decoration: none; flex: 1; font-weight: 700; }}
         .tab.active {{ color: var(--accent); }}
+        a {{ color: inherit; text-decoration: none; }}
     </style>
 </head>
 <body>
@@ -164,7 +168,6 @@ def aggregate():
     const allPosts = {json.dumps(archive)};
     let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
     
-    // Функция для форматирования времени устройства
     function formatDeviceTime(rawDate) {{
         const d = rawDate ? new Date(rawDate) : new Date();
         return new Intl.DateTimeFormat('ru-RU', {{
@@ -195,13 +198,16 @@ def aggregate():
             html += `<div class="card">
                 ${{p.media ? `<img src="${{p.media}}" class="media-img" loading="lazy">` : ''}}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span style="font-weight:800; color:var(--accent); font-size:0.9em;">@${{p.handle}}</span>
+                    <a href="${{p.link}}" target="_blank" style="font-weight:800; color:var(--accent); font-size:0.9em; line-height:1.2;">
+                        ${{p.full_name}}<br>
+                        <span style="opacity:0.6; font-size:0.85em;">@${{p.handle}}</span>
+                    </a>
                     <span style="opacity:0.4; font-size:0.85em; font-weight:700;">${{formatDeviceTime(p.date_raw)}}</span>
                 </div>
                 <div class="content">${{p.content}}</div>
                 <div class="footer-btns">
                     <button class="btn-icon" onclick="toggleFav('${{p.id}}')">${{isFav?'⭐':'☆'}}</button>
-                    <a href="${{p.link}}" target="_blank" class="btn-icon" style="text-decoration:none; line-height:1;">⎋</a>
+                    <a href="${{p.link}}" target="_blank" class="btn-icon" style="line-height:1;">⎋</a>
                 </div>
             </div>`;
         }});
