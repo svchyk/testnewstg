@@ -25,7 +25,7 @@ GEMINI_KEY   = os.getenv("GEMINI_API_KEY")
 # Доступные flash-модели (в порядке предпочтения):
 #   gemini-2.0-flash   →  самая свежая
 #   gemini-1.5-flash   →  стабильная fallback
-PREFERRED_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"]
+PREFERRED_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
 
 model = None
 if GEMINI_KEY:
