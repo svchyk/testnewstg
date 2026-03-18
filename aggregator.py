@@ -22,7 +22,6 @@ def get_tg_posts(channel_name):
         title_tag = soup.find('div', class_='tgme_channel_info_header_title')
         full_name = title_tag.text.strip() if title_tag else channel_name
         
-        # Глубина 100 постов
         items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=100)
         for item in items:
             text_area = item.find('div', class_='tgme_widget_message_text')
@@ -37,7 +36,8 @@ def get_tg_posts(channel_name):
 
             video_url = ""
             video_tag = item.find('video')
-            if video_tag: video_url = video_tag.get('src', '')
+            if video_tag: 
+                video_url = video_tag.get('src', '')
 
             media_url = ""
             photo = item.find('a', class_='tgme_widget_message_photo_wrap')
@@ -63,14 +63,12 @@ def get_tg_posts(channel_name):
 
 def generate_static_summary(all_posts):
     est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
-    
     return f"""
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
             <h2 style="margin:0; font-size:18px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC INTELLIGENCE SUMMARY</h2>
             <span id="summary-time" style="font-size:14px; opacity:0.5; font-weight:700;"></span>
         </div>
-
         <div class="stat-grid">
             <div class="stat-box">Эскалация<span class="stat-val">87%</span></div>
             <div class="stat-box">Ядерный удар<span class="stat-val">4%</span></div>
@@ -80,7 +78,6 @@ def generate_static_summary(all_posts):
                 Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">{est_date} — 22.03</span>
             </div>
         </div>
-
         <div class="ai-text-block" style="margin-top:20px;">
             <h3 style="margin:0 0 15px 0;">Глобальный анализ ситуации</h3>
             <div class="summary-section" style="line-height:1.6; font-size:15px;">
@@ -131,13 +128,14 @@ def aggregate():
         .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
         .stat-box {{ background: rgba(120,120,128,0.08); padding: 12px; border-radius: 15px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; }}
         .stat-val {{ font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 5px; }}
-        .card {{ background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }}
+        .card {{ background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; position: relative; }}
         .media-container {{ width: calc(100% + 40px); margin: -20px -20px 15px -20px; background: #000; }}
-        .media-img, video {{ width: 100%; display: block; }}
+        .media-img, video {{ width: 100%; display: block; max-height: 80vh; object-fit: contain; }}
         .content {{ line-height: 1.5; font-size: 16px; word-wrap: break-word; }}
         .tabs {{ position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }}
         .tab {{ flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }}
         .tab.active {{ color: var(--accent); }}
+        video::-webkit-media-controls-panel {{ background-image: linear-gradient(transparent, rgba(0,0,0,0.5)); }}
     </style>
 </head>
 <body>
@@ -150,14 +148,15 @@ def aggregate():
     <div id="feed"></div>
 </div>
 <div class="tabs">
-    <a href="#" class="tab active" onclick="render('all', this)">📰<br>СВОДКА</a>
-    <a href="#" class="tab" onclick="render('archive', this)">📦<br>АРХИВ</a>
-    <a href="#" class="tab" onclick="render('fav', this)">⭐<br>SAVED</a>
+    <a href="javascript:void(0)" class="tab active" onclick="render('all', this)">📰<br>СВОДКА</a>
+    <a href="javascript:void(0)" class="tab" onclick="render('archive', this)">📦<br>АРХИВ</a>
+    <a href="javascript:void(0)" class="tab" onclick="render('fav', this)">⭐<br>SAVED</a>
 </div>
 
 <script>
     const allPosts = {json.dumps(archive)};
     let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
+    let currentMode = 'all';
 
     function formatDeviceTime(rawDate) {{
         if(!rawDate) return '';
@@ -174,6 +173,7 @@ def aggregate():
     }}
 
     function render(mode = 'all', el = null) {{
+        currentMode = mode;
         if(el) {{
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             el.classList.add('active');
@@ -189,10 +189,10 @@ def aggregate():
         posts.forEach(p => {{
             const isFav = favorites.includes(p.id);
             let mediaHtml = p.video 
-                ? `<div class="media-container"><video src="${{p.video}}" autoplay muted loop playsinline></video></div>`
+                ? `<div class="media-container"><video src="${{p.video}}" autoplay muted loop playsinline controls preload="metadata"></video></div>`
                 : (p.media ? `<div class="media-container"><img src="${{p.media}}" class="media-img" loading="lazy"></div>` : '');
 
-            html += `<div class="card">
+            html += `<div class="card" id="card-${{p.id}}">
                 ${{mediaHtml}}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                     <a href="${{p.link}}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
@@ -202,19 +202,43 @@ def aggregate():
                 </div>
                 <div class="content">${{p.content}}</div>
                 <div style="margin-top:15px; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
-                    <button style="background:none; border:none; cursor:pointer; font-size:18px;" onclick="toggleFav('${{p.id}}')">${{isFav?'⭐':'☆'}}</button>
+                    <button id="btn-${{p.id}}" style="background:none; border:none; cursor:pointer; font-size:22px;" onclick="toggleFav('${{p.id}}')">${{isFav?'⭐':'☆'}}</button>
                 </div>
             </div>`;
         }});
         container.innerHTML = html;
-        window.scrollTo(0,0);
+        initVideoObserver();
     }}
 
     function toggleFav(id) {{
-        if(favorites.includes(id)) favorites = favorites.filter(f => f !== id);
-        else favorites.push(id);
+        const btn = document.getElementById('btn-' + id);
+        if(favorites.includes(id)) {{
+            favorites = favorites.filter(f => f !== id);
+            btn.innerText = '☆';
+            if(currentMode === 'fav') {{
+                document.getElementById('card-' + id).style.display = 'none';
+            }}
+        }} else {{
+            favorites.push(id);
+            btn.innerText = '⭐';
+        }}
         localStorage.setItem('favs', JSON.stringify(favorites));
-        render();
+    }}
+
+    function initVideoObserver() {{
+        const options = {{ threshold: 0.5 }};
+        const observer = new IntersectionObserver((entries) => {{
+            entries.forEach(entry => {{
+                const video = entry.target;
+                if (entry.isIntersecting) {{
+                    video.play().catch(() => {{}});
+                }} else {{
+                    video.pause();
+                }}
+            }});
+        }}, options);
+
+        document.querySelectorAll('video').forEach(v => observer.observe(v));
     }}
 
     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
