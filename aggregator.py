@@ -12,19 +12,8 @@ import google.generativeai as genai
 # 1. КОНФИГУРАЦИЯ ИСТОЧНИКОВ
 # ==========================================
 
-# Эти каналы ОТОБРАЖАЮТСЯ в ленте постов
-DISPLAY_CHANNELS = [
-    'chirpnews', 'condottieros', 'infantmilitario', 
-    'victorstepanych', 'varlamov_news'
-]
-
-# Эти источники ТОЛЬКО для анализа (не отображаются в ленте)
-ANALYSIS_CHANNELS = [
-    'tasnim_khabar', 'farsna', 'Military_Arabic', 
-    'intelsky', 'war_monitor'
-]
-
-# Мировые СМИ (RSS)
+DISPLAY_CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario', 'victorstepanych', 'varlamov_news']
+ANALYSIS_CHANNELS = ['tasnim_khabar', 'farsna', 'Military_Arabic', 'intelsky', 'war_monitor']
 RSS_FEEDS = [
     'https://www.aljazeera.com/xml/rss/all.xml',
     'https://www.timesofisrael.com/feed/',
@@ -34,16 +23,15 @@ RSS_FEEDS = [
 ARCHIVE_FILE = 'archive.json'
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-# Настройка Gemini 3 (актуальная модель на март 2026)
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # Используем gemini-3-pro для максимально глубокого анализа
-    model = genai.GenerativeModel('gemini-3-pro')
+    # Исправлено: используем стабильную модель 1.5 Pro
+    model = genai.GenerativeModel('gemini-1.5-pro')
 else:
     model = None
 
 # ==========================================
-# 2. ВСПОМОГАТЕЛЬНЫЕ СКРИПТЫ СБОРА
+# 2. ФУНКЦИИ СБОРА
 # ==========================================
 
 def get_oil_price():
@@ -67,10 +55,7 @@ def get_reddit_rumors():
 def get_tg_posts(channel_name, limit=100):
     posts = []
     url = f"https://t.me/s/{channel_name}"
-    # Используем полный юзер-агент для стабильности
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
         response = requests.get(url, headers=headers, timeout=20)
         response.encoding = 'utf-8'
@@ -80,13 +65,11 @@ def get_tg_posts(channel_name, limit=100):
         title_tag = soup.find('div', class_='tgme_channel_info_header_title')
         full_name = title_tag.text.strip() if title_tag else channel_name
         
-        # Глубина 100 постов для каждого канала!
         items = soup.find_all('div', class_='tgme_widget_message_wrap', limit=limit)
         for item in items:
             text_area = item.find('div', class_='tgme_widget_message_text')
             if not text_area: continue
             
-            # Сохраняем оригинальный HTML и чистим от "Read more"
             content_html = text_area.decode_contents().strip()
             content_html = re.sub(r'<a[^>]*tgme_widget_message_text_more[^>]*>.*?</a>', '', content_html)
             
@@ -121,7 +104,7 @@ def get_tg_posts(channel_name, limit=100):
     return posts
 
 # ==========================================
-# 3. ГЛАВНАЯ ЛОГИКА АГРЕГАЦИИ И АНАЛИЗА
+# 3. ОСНОВНОЙ ЦИКЛ
 # ==========================================
 
 def aggregate():
@@ -131,238 +114,158 @@ def aggregate():
             except: archive = []
     else: archive = []
 
-    # 1. Собираем посты для ЛЕНТЫ (только DISPLAY_CHANNELS)
-    feed_posts = []
+    all_scraped = []
     for ch in DISPLAY_CHANNELS:
-        feed_posts.extend(get_tg_posts(ch, limit=50))
+        all_scraped.extend(get_tg_posts(ch, limit=50))
     
-    # Сортируем новые посты по дате (свежие сверху) для ИИ
-    new_posts_sorted = sorted(feed_posts, key=lambda x: x['date_raw'], reverse=True)
+    new_posts_sorted = sorted(all_scraped, key=lambda x: x['date_raw'], reverse=True)
     
-    # 2. Собираем контекст ИИ (50 постов из ленты + скрытые каналы)
-    ai_context = "ЛЕНТА (50 постов):\n" + " ".join([p['text_plain'] for p in new_posts_sorted[:50]])
-    ai_context += "\nИРАН/OSINT:\n"
+    ai_context = "ЛЕНТА:\n" + " ".join([p['text_plain'] for p in new_posts_sorted[:50]])
     for ch in ANALYSIS_CHANNELS:
-        extra_posts = get_tg_posts(ch, limit=15)
-        ai_context += " " + " ".join([p['text_plain'] for p in extra_posts])
-    
-    ai_context += "\nRSS:\n"
-    for url in RSS_FEEDS:
-        try:
-            f = feedparser.parse(url)
-            ai_context += " " + " ".join([e.title for e in f.entries[:5]])
-        except: pass
+        extra = get_tg_posts(ch, limit=10)
+        ai_context += " " + " ".join([p['text_plain'] for p in extra])
 
-    # Запрос к Gemini 3 Pro
     ai_data = {
         "escalation": "??%", "nuclear_risk": "??%", "ground_op": "??%", "iran_chance": "??%", 
-        "forecast_date": "дд.мм", "analysis": " Gemini 3 Pro обрабатывает данные...", 
-        "rumors_block": "Мониторинг соцсетей в процессе..."
+        "forecast_date": "анализ...", "analysis": "Данные обновляются...", "rumors_block": "Поиск слухов..."
     }
 
     if model:
         oil_info = get_oil_price()
         rumors_info = get_reddit_rumors()
-        prompt = f"""
-        Ты аналитик разведки. На основе данных: 
-        КОНТЕКСТ: {ai_context[:6000]}
-        СЛУХИ X/REDDIT: {rumors_info}
-        НЕФТЬ BRENT: {oil_info}
-        
-        Верни СТРОГО JSON:
-        {{
-          "escalation": "число%", "nuclear_risk": "число%", "ground_op": "число%", "iran_chance": "число%", 
-          "forecast_date": "дд.мм",
-          "analysis": "12 предложений глубокого стратегического анализа ситуации.",
-          "rumors_block": "12 предложений анализа неподтвержденных слухов и данных из X/Reddit."
-        }}
-        """
+        prompt = f"Data: {ai_context[:6000]}. Oil: {oil_info}. Rumors: {rumors_info}. Return ONLY JSON: {{'escalation': 'X%', 'nuclear_risk': 'X%', 'ground_op': 'X%', 'iran_chance': 'X%', 'forecast_date': 'DD.MM', 'analysis': '12 sentences', 'rumors_block': '10 sentences'}}"
         try:
             response = model.generate_content(prompt)
-            # Ищем JSON в ответе, даже если Gemini добавила лишний текст
-            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-            if json_match:
-                ai_data = json.loads(json_match.group())
+            match = re.search(r'\{.*\}', response.text, re.DOTALL)
+            if match:
+                ai_data = json.loads(match.group().replace("'", '"'))
         except Exception as e:
             print(f"AI Error: {e}")
 
-    # 3. Обновляем архив и сохраняем 2000 постов
+    # Сохраняем архив
     existing_ids = {p['id'] for p in archive}
-    for np in feed_posts:
+    for np in all_scraped:
         if np['id'] not in existing_ids: archive.append(np)
-    archive.sort(key=lambda x: x['date_raw'], reverse=True)
+    archive.sort(key=lambda x: x.get('date_raw', ''), reverse=True)
+    
     with open(ARCHIVE_FILE, 'w', encoding='utf-8') as f:
         json.dump(archive[:2000], f, ensure_ascii=False, indent=2)
 
-    # 4. Время обновления МСК
-    now_msk = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime("%H:%M")
-    est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
+    # Время (исправлено название переменной)
+    build_time = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime("%H:%M")
 
-    # Безопасный HTML-шаблон (без f-строк)
     html_template = """<!DOCTYPE html>
 <html lang="ru" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Intelligence Center v3.0</title>
+    <title>Intelligence Center</title>
     <style>
-        :root { --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; --rumor: #ff9500; }
-        [data-theme="dark"] { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; --rumor: #ff9f0a; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
+        :root { --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }
+        [data-theme="dark"] { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding-bottom: 100px; }
         header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center; }
         [data-theme="dark"] header { background: rgba(0,0,0,0.8); }
         .summary-card { background: var(--card); border-radius: 25px; padding: 25px; margin: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .stat-box { background: rgba(120,120,128,0.08); padding: 12px; border-radius: 15px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; }
         .stat-val { font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 5px; }
-        .card { background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; position: relative; }
+        .card { background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }
         .media-container { width: calc(100% + 40px); margin: -20px -20px 15px -20px; background: #000; }
         .media-img, video { width: 100%; display: block; max-height: 80vh; object-fit: contain; }
-        .content { line-height: 1.5; font-size: 16px; word-wrap: break-word; }
         .tabs { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }
         .tab { flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }
         .tab.active { color: var(--accent); }
-        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; transition: transform 0.1s; }
-        .refresh-btn:active { transform: scale(0.95); opacity: 0.8; }
-        .badge-ai { background: var(--accent); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; vertical-align: middle; margin-left: 5px; }
-        .rumors-section { margin-top:20px; padding:15px; background:rgba(255,149,0,0.08); border-left:4px solid #ff9500; border-radius:10px; font-size:14px; line-height:1.6; }
+        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .rumors-section { margin-top:15px; padding:15px; background:rgba(255,149,0,0.08); border-left:4px solid #ff9500; border-radius:12px; font-size:14px; }
     </style>
 </head>
 <body>
 <header>
     <h1 style="margin:0; font-size:24px; font-weight:900;">Intelligence</h1>
-    <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
+    <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px;">🌓</button>
 </header>
-<div id="main-content" style="max-width:600px; margin: 0 auto;">
+<div style="max-width:600px; margin: 0 auto;">
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
-            <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC AI SUMMARY <span class="badge-ai">G3</span></h2>
-            <div style="text-align:right">
-                <span style="font-size:11px; opacity:0.5; display:block; font-weight:700;">LAST UPDATE</span>
-                <span style="font-size:15px; font-weight:900; color:var(--accent);">_TIME_ MSK</span>
-            </div>
+            <h2 style="margin:0; font-size:16px; font-weight:900;">STRATEGIC AI SUMMARY</h2>
+            <span style="font-size:15px; font-weight:900; color:var(--accent);">_TIME_ MSK</span>
         </div>
         <div class="stat-grid">
             <div class="stat-box">Эскалация<span class="stat-val">_ESC_</span></div>
             <div class="stat-box">Ядерный риск<span class="stat-val">_NUC_</span></div>
             <div class="stat-box">Наземная операция<span class="stat-val">_GND_</span></div>
             <div class="stat-box">Шанс Ирана<span class="stat-val">_IRAN_</span></div>
-            <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between;">
-                Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">_DATE_</span>
+            <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between; padding: 15px;">
+                Прогноз начала наземной операции: <span class="stat-val" style="margin:0;">_DATE_</span>
             </div>
         </div>
         <div style="margin-top:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 style="margin:0; font-size:16px;">Глобальный анализ ситуации</h3>
-                <button onclick="location.reload()" class="refresh-btn">REFRESH PAGE</button>
+                <h3 style="margin:0; font-size:16px;">Глобальный анализ</h3>
+                <button onclick="location.reload()" class="refresh-btn">REFRESH</button>
             </div>
-            <div style="font-size:15px; line-height:1.6; opacity:0.9;">_ANALYSIS_</div>
+            <div style="line-height:1.6; font-size:15px; opacity:0.9;">_ANALYSIS_</div>
             <div class="rumors-section">
-                <strong style="color:#ff9500; font-size:12px; text-transform:uppercase;">Мониторинг слухов (X/Reddit/Forums):</strong><br>
-                <div style="margin-top:5px; opacity:0.9;">_RUMORS_</div>
+                <strong style="color:#ff9500; font-size:12px;">СЛУХИ И СОЦСЕТИ:</strong><br>
+                <div style="margin-top:5px;">_RUMORS_</div>
             </div>
         </div>
     </div>
     <div id="feed"></div>
 </div>
 <div class="tabs">
-    <a href="javascript:void(0)" class="tab active" onclick="render('all', this)">📰<br>СВОДКА</a>
-    <a href="javascript:void(0)" class="tab" onclick="render('archive', this)">📦<br>АРХИВ</a>
-    <a href="javascript:void(0)" class="tab" onclick="render('fav', this)">⭐<br>SAVED</a>
+    <a href="javascript:void(0)" class="tab active" onclick="render('all', this)">📰 СВОДКА</a>
+    <a href="javascript:void(0)" class="tab" onclick="render('archive', this)">📦 АРХИВ</a>
+    <a href="javascript:void(0)" class="tab" onclick="render('fav', this)">⭐ SAVED</a>
 </div>
-
 <script>
     const allPosts = _JSON_DATA_;
     let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
-    let currentMode = 'all';
-
-    function formatDeviceTime(rawDate) {
-        if(!rawDate) return '';
-        const d = new Date(rawDate);
-        return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    }
-
     function toggleTheme() {
-        const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
+        const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('theme', t);
     }
-
     function render(mode = 'all', el = null) {
-        currentMode = mode;
         if(el) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             el.classList.add('active');
         }
         const container = document.getElementById('feed');
-        let html = '';
-        
-        let posts = [];
-        if(mode === 'all') posts = allPosts.slice(0, 50);
-        else if(mode === 'archive') posts = allPosts.slice(50, 500);
-        else posts = allPosts.filter(p => favorites.includes(p.id));
-        
-        posts.forEach(p => {
-            const isFav = favorites.includes(p.id);
-            let mediaHtml = p.video 
-                ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls preload="metadata"></video></div>`
-                : (p.media ? `<div class="media-container"><img src="${p.media}" class="media-img" loading="lazy"></div>` : '');
-
-            html += `<div class="card" id="card-${p.id}">
-                ${mediaHtml}
+        let posts = mode === 'all' ? allPosts.slice(0, 50) : (mode === 'archive' ? allPosts.slice(50, 500) : allPosts.filter(p => favorites.includes(p.id)));
+        container.innerHTML = posts.map(p => `
+            <div class="card" id="card-${p.id}">
+                ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}"></div>` : '')}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
-                        ${p.full_name}<br><span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
-                    </a>
-                    <span style="opacity:0.4; font-size:12px; font-weight:700;">${formatDeviceTime(p.date_raw)}</span>
+                    <span style="font-weight:800; color:var(--accent);">${p.full_name}</span>
+                    <span style="opacity:0.4; font-size:12px;">${p.date_raw.split('T')[1]?.slice(0,5) || ''}</span>
                 </div>
-                <div class="content">${p.content}</div>
-                <div style="margin-top:15px; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
-                    <button id="btn-${p.id}" style="background:none; border:none; cursor:pointer; font-size:24px;" onclick="toggleFav('${p.id}')">${isFav?'⭐':'☆'}</button>
-                </div>
-            </div>`;
-        });
-        container.innerHTML = html;
+                <div style="font-size:16px; line-height:1.5;">${p.content}</div>
+                <button style="background:none; border:none; cursor:pointer; font-size:24px; margin-top:10px;" onclick="toggleFav('${p.id}')">${favorites.includes(p.id)?'⭐':'☆'}</button>
+            </div>
+        `).join('');
         initVideoObserver();
     }
-
     function toggleFav(id) {
-        const btn = document.getElementById('btn-' + id);
-        if(favorites.includes(id)) {
-            favorites = favorites.filter(f => f !== id);
-            btn.innerText = '☆';
-            if(currentMode === 'fav') {
-                document.getElementById('card-' + id).style.display = 'none';
-            }
-        } else {
-            favorites.push(id);
-            btn.innerText = '⭐';
-        }
+        if(favorites.includes(id)) favorites = favorites.filter(f => f !== id);
+        else favorites.push(id);
         localStorage.setItem('favs', JSON.stringify(favorites));
+        render(window.currentMode || 'all');
     }
-
     function initVideoObserver() {
-        const options = { threshold: 0.5 };
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                const video = entry.target;
-                if (entry.isIntersecting) {
-                    video.play().catch(() => {});
-                } else {
-                    video.pause();
-                }
-            });
-        }, options);
-        document.querySelectorAll('video').forEach(v => observer.observe(v));
+        const obs = new IntersectionObserver((es) => {
+            es.forEach(e => { if(e.isIntersecting) e.target.play().catch(()=>{}); else e.target.pause(); });
+        }, { threshold: 0.5 });
+        document.querySelectorAll('video').forEach(v => obs.observe(v));
     }
-
     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
     render();
 </script>
 </body>
 </html>"""
 
-    # Финальная сборка HTML файла
+    # Безопасная вставка данных
     f_html = html_template.replace('_TIME_', build_time)
     f_html = f_html.replace('_ESC_', ai_data['escalation'])
     f_html = f_html.replace('_NUC_', ai_data['nuclear_risk'])
