@@ -25,8 +25,8 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # ИСПОЛЬЗУЕМ GEMINI-3-FLASH
-    model = genai.GenerativeModel('gemini-3-flash')
+    # ИСПОЛЬЗУЕМ GEMINI-2-FLASH
+    model = genai.GenerativeModel('gemini-2-flash')
 else:
     model = None
 
