@@ -25,13 +25,13 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # Использование модели gemini-3-flash по твоему запросу
+    # ИСПОЛЬЗУЕМ GEMINI-3-FLASH
     model = genai.GenerativeModel('gemini-3-flash')
 else:
     model = None
 
 # ==========================================
-# 2. СЛУЖЕБНЫЕ ФУНКЦИИ
+# 2. СБОР ДАННЫХ
 # ==========================================
 
 def get_oil_price():
@@ -104,7 +104,7 @@ def get_tg_posts(channel_name, limit=100):
     return posts
 
 # ==========================================
-# 3. АГРЕГАЦИЯ И ГЕНЕРАЦИЯ
+# 3. АГРЕГАЦИЯ И АНАЛИЗ
 # ==========================================
 
 def aggregate():
@@ -114,45 +114,50 @@ def aggregate():
             except: archive = []
     else: archive = []
 
-    all_current = []
+    all_scraped = []
     for ch in DISPLAY_CHANNELS:
-        all_current.extend(get_tg_posts(ch, limit=50))
+        all_scraped.extend(get_tg_posts(ch, limit=50))
     
-    new_posts_sorted = sorted(all_current, key=lambda x: x.get('date_raw', ''), reverse=True)
+    new_posts_sorted = sorted(all_scraped, key=lambda x: x['date_raw'], reverse=True)
     
-    ai_context = "НОВОСТИ:\n" + " ".join([p['text_plain'] for p in new_posts_sorted[:50]])
+    ai_context = "ЛЕНТА:\n" + " ".join([p['text_plain'] for p in new_posts_sorted[:50]])
     for ch in ANALYSIS_CHANNELS:
         extra = get_tg_posts(ch, limit=10)
         ai_context += " " + " ".join([p['text_plain'] for p in extra])
 
     ai_data = {
         "escalation": "??%", "nuclear_risk": "??%", "ground_op": "??%", "iran_chance": "??%", 
-        "forecast_date": "анализ...", "analysis": "Сбор данных Gemini...", "rumors_block": "Мониторинг X/Reddit..."
+        "forecast_date": "анализ...", "analysis": "Ошибка AI или лимит запросов.", "rumors_block": "Данные не получены."
     }
 
     if model:
         oil_info = get_oil_price()
         rumors_info = get_reddit_rumors()
-        prompt = f"""Analyze: {ai_context[:6000]}. Oil: {oil_info}. Rumors: {rumors_info}. 
-        Return ONLY valid JSON: {{"escalation": "X%", "nuclear_risk": "X%", "ground_op": "X%", "iran_chance": "X%", "forecast_date": "DD.MM", "analysis": "12 sentences", "rumors_block": "10 sentences"}}"""
+        # Максимально четкий промпт для ИИ
+        prompt = f"""Analyze provided Middle East news: {ai_context[:7000]}. 
+        Oil: {oil_info}. Rumors: {rumors_info}. 
+        Return ONLY valid JSON: {{"escalation": "X%", "nuclear_risk": "X%", "ground_op": "X%", "iran_chance": "X%", "forecast_date": "DD.MM", "analysis": "12 informative sentences about strategic situation", "rumors_block": "10 sentences about social media trends and unconfirmed reports"}}"""
         try:
             response = model.generate_content(prompt)
             match = re.search(r'\{.*\}', response.text, re.DOTALL)
             if match:
                 ai_data = json.loads(match.group().replace("'", '"'))
         except Exception as e:
-            print(f"AI Error: {e}")
+            print(f"AI Critical Error: {e}")
 
+    # Обновление и сохранение архива
     existing_ids = {p['id'] for p in archive}
-    for np in all_current:
+    for np in all_scraped:
         if np['id'] not in existing_ids: archive.append(np)
-    archive.sort(key=lambda x: x.get('date_raw', ''), reverse=True)
-    
+    archive.sort(key=lambda x: x['date_raw'], reverse=True)
     with open(ARCHIVE_FILE, 'w', encoding='utf-8') as f:
         json.dump(archive[:2000], f, ensure_ascii=False, indent=2)
 
     build_time = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime("%H:%M")
 
+    # ==========================================
+    # 4. ВЕРСТКА (С СОХРАНЕНИЕМ ВСЕГО ВИЗУАЛА)
+    # ==========================================
     html_template = """<!DOCTYPE html>
 <html lang="ru" data-theme="light">
 <head>
@@ -176,10 +181,10 @@ def aggregate():
         .tabs { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }
         .tab { flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }
         .tab.active { color: var(--accent); }
-        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; transition: transform 0.1s; }
-        .refresh-btn:active { transform: scale(0.95); opacity: 0.8; }
-        .badge-ai { background: var(--accent); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; vertical-align: middle; margin-left: 5px; }
+        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; }
         .rumors-section { margin-top:20px; padding:15px; background:rgba(255,149,0,0.08); border-left:4px solid #ff9500; border-radius:10px; font-size:14px; line-height:1.6; }
+        /* Красивое время */
+        .post-time { opacity: 0.6; font-size: 13px; font-weight: 700; background: rgba(120,120,128,0.12); padding: 4px 10px; border-radius: 10px; color: var(--text); }
     </style>
 </head>
 <body>
@@ -190,7 +195,7 @@ def aggregate():
 <div id="main-content" style="max-width:600px; margin: 0 auto;">
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
-            <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC AI SUMMARY <span class="badge-ai">G3</span></h2>
+            <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC AI SUMMARY <span style="background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px; font-size:9px;">G3</span></h2>
             <div style="text-align:right">
                 <span style="font-size:11px; opacity:0.5; display:block; font-weight:700;">LAST UPDATE</span>
                 <span style="font-size:15px; font-weight:900; color:var(--accent);">_TIME_ MSK</span>
@@ -241,13 +246,13 @@ def aggregate():
         let posts = mode === 'all' ? allPosts.slice(0, 50) : (mode === 'archive' ? allPosts.slice(50, 500) : allPosts.filter(p => favorites.includes(p.id)));
         container.innerHTML = posts.map(p => `
             <div class="card" id="card-${p.id}">
-                ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls preload="metadata"></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}" loading="lazy"></div>` : '')}
+                ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}" loading="lazy"></div>` : '')}
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none; line-height:1.2;">
-                        <span style="font-size:16px;">${p.full_name}</span><br>
+                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none; line-height:1.3;">
+                        <span style="font-size:17px;">${p.full_name}</span><br>
                         <span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
                     </a>
-                    <span style="opacity:0.6; font-size:13px; font-weight:700; background:rgba(120,120,128,0.1); padding:4px 8px; border-radius:8px;">
+                    <span class="post-time">
                         ${p.date_raw ? new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : ''}
                     </span>
                 </div>
@@ -275,7 +280,7 @@ def aggregate():
 </body>
 </html>"""
 
-    # ИСПРАВЛЕНО: закрыта кавычка и скобка в строке записи файла
+    # Финальная сборка без f-строк для избежания SyntaxError
     f_html = html_template.replace('_TIME_', build_time)
     f_html = f_html.replace('_ESC_', ai_data['escalation'])
     f_html = f_html.replace('_NUC_', ai_data['nuclear_risk'])
