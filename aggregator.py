@@ -65,17 +65,19 @@ def get_tg_posts(channel_name):
     return posts
 
 def generate_static_summary(all_posts):
-    est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
-    # Генерируем метку времени сборки для отображения на странице
-    build_time = datetime.datetime.now().strftime("%H:%M")
+    # Корректировка времени под МСК (UTC+3)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_msk = now_utc + datetime.timedelta(hours=3)
+    build_time = now_msk.strftime("%H:%M")
+    est_date = (now_msk + datetime.timedelta(days=4)).strftime("%d.%m")
     
     return f"""
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
             <h2 style="margin:0; font-size:18px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC INTELLIGENCE SUMMARY</h2>
             <div style="text-align:right">
-                <span style="font-size:12px; opacity:0.5; display:block;">LAST SCAN</span>
-                <span style="font-size:14px; font-weight:800; color:var(--accent);">{build_time} MSK</span>
+                <span style="font-size:11px; opacity:0.5; display:block; font-weight:700;">LAST UPDATE</span>
+                <span style="font-size:15px; font-weight:900; color:var(--accent);">{build_time} MSK</span>
             </div>
         </div>
 
@@ -92,7 +94,7 @@ def generate_static_summary(all_posts):
         <div class="ai-text-block" style="margin-top:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3 style="margin:0;">Глобальный анализ ситуации</h3>
-                <button onclick="location.reload()" class="refresh-btn">CHECK UPDATES</button>
+                <button onclick="location.reload()" class="refresh-btn">REFRESH PAGE</button>
             </div>
             <div class="summary-section" style="line-height:1.6; font-size:15px;">
                 На текущий час ситуация в регионе характеризуется переходом от демонстративных ударов к системному подавлению ПВО. 
@@ -120,6 +122,8 @@ def aggregate():
         if np['id'] not in existing_ids: archive.append(np)
     
     archive.sort(key=lambda x: x['date_raw'], reverse=True)
+    
+    # Сохраняем расширенный архив
     with open(ARCHIVE_FILE, 'w', encoding='utf-8') as f:
         json.dump(archive[:2000], f, ensure_ascii=False, indent=2)
 
@@ -135,7 +139,7 @@ def aggregate():
     <style>
         :root {{ --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }}
         [data-theme="dark"] {{ --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }}
-        body {{ background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; }}
+        body {{ background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }}
         header {{ position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center; }}
         [data-theme="dark"] header {{ background: rgba(0,0,0,0.8); }}
         .summary-card {{ background: var(--card); border-radius: 25px; padding: 25px; margin: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }}
@@ -149,7 +153,8 @@ def aggregate():
         .tabs {{ position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }}
         .tab {{ flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }}
         .tab.active {{ color: var(--accent); }}
-        .refresh-btn {{ background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 10px; font-size: 10px; font-weight: 800; cursor: pointer; }}
+        .refresh-btn {{ background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; transition: transform 0.1s; }}
+        .refresh-btn:active {{ transform: scale(0.95); opacity: 0.8; }}
     </style>
 </head>
 <body>
@@ -214,7 +219,7 @@ def aggregate():
                 </div>
                 <div class="content">${{p.content}}</div>
                 <div style="margin-top:15px; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
-                    <button id="btn-${{p.id}}" style="background:none; border:none; cursor:pointer; font-size:22px;" onclick="toggleFav('${{p.id}}')">${{isFav?'⭐':'☆'}}</button>
+                    <button id="btn-${{p.id}}" style="background:none; border:none; cursor:pointer; font-size:24px;" onclick="toggleFav('${{p.id}}')">${{isFav?'⭐':'☆'}}</button>
                 </div>
             </div>`;
         }});
