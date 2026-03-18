@@ -139,11 +139,15 @@ def aggregate():
         Return ONLY valid JSON: {{"escalation": "X%", "nuclear_risk": "X%", "ground_op": "X%", "iran_chance": "X%", "forecast_date": "DD.MM", "analysis": "12 informative sentences about strategic situation", "rumors_block": "10 sentences about social media trends and unconfirmed reports"}}"""
         try:
             response = model.generate_content(prompt)
+            # Ищем JSON более надежно
             match = re.search(r'\{.*\}', response.text, re.DOTALL)
             if match:
-                ai_data = json.loads(match.group().replace("'", '"'))
+                # Убираем опасный .replace("'", '"'), так как Gemini сама выдает правильные кавычки
+                cleaned_json = match.group().strip()
+                ai_data = json.loads(cleaned_json)
         except Exception as e:
-            print(f"AI Critical Error: {e}")
+            print(f"AI Parse Error: {e}")
+            # Оставляем старые значения, если ИИ выдал плохой формат
 
     # Обновление и сохранение архива
     existing_ids = {p['id'] for p in archive}
