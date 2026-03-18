@@ -2,8 +2,8 @@ name: Update RSS Feed
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Запуск каждые 15 минут
-  workflow_dispatch:        # Добавляет кнопку "Run workflow" для ручного запуска
+    - cron: '*/15 * * * *'  # Запуск каждые 20 минут (оптимально для стабильности GitHub)
+  workflow_dispatch:        # Кнопка для ручного запуска
 
 jobs:
   build:
@@ -21,9 +21,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run aggregator
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python aggregator.py
 
       - name: Commit and push changes
@@ -31,5 +34,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html archive.json
-          git commit -m "Update news, summary and archive" || exit 0
+          git commit -m "Update news, summary and archive with AI" || exit 0
           git push
