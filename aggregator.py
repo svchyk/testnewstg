@@ -14,11 +14,15 @@ ARCHIVE_FILE = 'archive.json'
 def get_tg_posts(channel_name):
     posts = []
     url = f"https://t.me/s/{channel_name}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, headers=headers, timeout=20)
         response.encoding = 'utf-8'
+        if response.status_code != 200: return []
+
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         title_tag = soup.find('div', class_='tgme_channel_info_header_title')
         full_name = title_tag.text.strip() if title_tag else channel_name
         
@@ -36,8 +40,7 @@ def get_tg_posts(channel_name):
 
             video_url = ""
             video_tag = item.find('video')
-            if video_tag: 
-                video_url = video_tag.get('src', '')
+            if video_tag: video_url = video_tag.get('src', '')
 
             media_url = ""
             photo = item.find('a', class_='tgme_widget_message_photo_wrap')
@@ -63,12 +66,19 @@ def get_tg_posts(channel_name):
 
 def generate_static_summary(all_posts):
     est_date = (datetime.datetime.now() + datetime.timedelta(days=4)).strftime("%d.%m")
+    # Генерируем метку времени сборки для отображения на странице
+    build_time = datetime.datetime.now().strftime("%H:%M")
+    
     return f"""
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
             <h2 style="margin:0; font-size:18px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC INTELLIGENCE SUMMARY</h2>
-            <span id="summary-time" style="font-size:14px; opacity:0.5; font-weight:700;"></span>
+            <div style="text-align:right">
+                <span style="font-size:12px; opacity:0.5; display:block;">LAST SCAN</span>
+                <span style="font-size:14px; font-weight:800; color:var(--accent);">{build_time} MSK</span>
+            </div>
         </div>
+
         <div class="stat-grid">
             <div class="stat-box">Эскалация<span class="stat-val">87%</span></div>
             <div class="stat-box">Ядерный удар<span class="stat-val">4%</span></div>
@@ -78,8 +88,12 @@ def generate_static_summary(all_posts):
                 Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">{est_date} — 22.03</span>
             </div>
         </div>
+
         <div class="ai-text-block" style="margin-top:20px;">
-            <h3 style="margin:0 0 15px 0;">Глобальный анализ ситуации</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0;">Глобальный анализ ситуации</h3>
+                <button onclick="location.reload()" class="refresh-btn">CHECK UPDATES</button>
+            </div>
             <div class="summary-section" style="line-height:1.6; font-size:15px;">
                 На текущий час ситуация в регионе характеризуется переходом от демонстративных ударов к системному подавлению ПВО. 
                 <b>Успехи Ирана:</b> КСИР успешно протестировал маршруты обхода израильских РЛС. 
@@ -135,7 +149,7 @@ def aggregate():
         .tabs {{ position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }}
         .tab {{ flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }}
         .tab.active {{ color: var(--accent); }}
-        video::-webkit-media-controls-panel {{ background-image: linear-gradient(transparent, rgba(0,0,0,0.5)); }}
+        .refresh-btn {{ background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 10px; font-size: 10px; font-weight: 800; cursor: pointer; }}
     </style>
 </head>
 <body>
@@ -163,8 +177,6 @@ def aggregate():
         const d = new Date(rawDate);
         return d.toLocaleString('ru-RU', {{ day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }});
     }}
-
-    document.getElementById('summary-time').innerText = formatDeviceTime(new Date().toISOString()) + ' MSK';
 
     function toggleTheme() {{
         const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -237,7 +249,6 @@ def aggregate():
                 }}
             }});
         }}, options);
-
         document.querySelectorAll('video').forEach(v => observer.observe(v));
     }}
 
