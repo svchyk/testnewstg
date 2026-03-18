@@ -9,7 +9,7 @@ import yfinance as yf
 import google.generativeai as genai
 
 # ==========================================
-# 1. КОНФИГУРАЦИЯ ИСТОЧНИКОВ
+# 1. КОНФИГУРАЦИЯ
 # ==========================================
 
 DISPLAY_CHANNELS = ['chirpnews', 'condottieros', 'infantmilitario', 'victorstepanych', 'varlamov_news']
@@ -25,13 +25,13 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # Исправлено: используем стабильную модель 1.5 Pro
+    # Используем 1.5 Pro для стабильности
     model = genai.GenerativeModel('gemini-1.5-pro')
 else:
     model = None
 
 # ==========================================
-# 2. ФУНКЦИИ СБОРА
+# 2. СБОР ДАННЫХ
 # ==========================================
 
 def get_oil_price():
@@ -104,7 +104,7 @@ def get_tg_posts(channel_name, limit=100):
     return posts
 
 # ==========================================
-# 3. ОСНОВНОЙ ЦИКЛ
+# 3. АГРЕГАЦИЯ И ГЕНЕРАЦИЯ
 # ==========================================
 
 def aggregate():
@@ -114,26 +114,27 @@ def aggregate():
             except: archive = []
     else: archive = []
 
-    all_scraped = []
+    all_current = []
     for ch in DISPLAY_CHANNELS:
-        all_scraped.extend(get_tg_posts(ch, limit=50))
+        all_current.extend(get_tg_posts(ch, limit=50))
     
-    new_posts_sorted = sorted(all_scraped, key=lambda x: x['date_raw'], reverse=True)
+    new_posts_sorted = sorted(all_current, key=lambda x: x.get('date_raw', ''), reverse=True)
     
-    ai_context = "ЛЕНТА:\n" + " ".join([p['text_plain'] for p in new_posts_sorted[:50]])
+    ai_context = "НОВОСТИ:\n" + " ".join([p['text_plain'] for p in new_posts_sorted[:50]])
     for ch in ANALYSIS_CHANNELS:
         extra = get_tg_posts(ch, limit=10)
         ai_context += " " + " ".join([p['text_plain'] for p in extra])
 
     ai_data = {
         "escalation": "??%", "nuclear_risk": "??%", "ground_op": "??%", "iran_chance": "??%", 
-        "forecast_date": "анализ...", "analysis": "Данные обновляются...", "rumors_block": "Поиск слухов..."
+        "forecast_date": "Анализ...", "analysis": "Сбор данных Gemini...", "rumors_block": "Мониторинг X/Reddit..."
     }
 
     if model:
         oil_info = get_oil_price()
         rumors_info = get_reddit_rumors()
-        prompt = f"Data: {ai_context[:6000]}. Oil: {oil_info}. Rumors: {rumors_info}. Return ONLY JSON: {{'escalation': 'X%', 'nuclear_risk': 'X%', 'ground_op': 'X%', 'iran_chance': 'X%', 'forecast_date': 'DD.MM', 'analysis': '12 sentences', 'rumors_block': '10 sentences'}}"
+        prompt = f"""Анализируй: {ai_context[:6000]}. Нефть: {oil_info}. Слухи: {rumors_info}. 
+        Верни ТОЛЬКО JSON: {{'escalation': 'X%', 'nuclear_risk': 'X%', 'ground_op': 'X%', 'iran_chance': 'X%', 'forecast_date': 'DD.MM', 'analysis': '12 предложений', 'rumors_block': '10 предложений'}}"""
         try:
             response = model.generate_content(prompt)
             match = re.search(r'\{.*\}', response.text, re.DOTALL)
@@ -142,16 +143,16 @@ def aggregate():
         except Exception as e:
             print(f"AI Error: {e}")
 
-    # Сохраняем архив
+    # Обновление архива
     existing_ids = {p['id'] for p in archive}
-    for np in all_scraped:
+    for np in all_current:
         if np['id'] not in existing_ids: archive.append(np)
     archive.sort(key=lambda x: x.get('date_raw', ''), reverse=True)
     
     with open(ARCHIVE_FILE, 'w', encoding='utf-8') as f:
         json.dump(archive[:2000], f, ensure_ascii=False, indent=2)
 
-    # Время (исправлено название переменной)
+    # Время обновления
     build_time = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime("%H:%M")
 
     html_template = """<!DOCTYPE html>
@@ -163,61 +164,67 @@ def aggregate():
     <style>
         :root { --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }
         [data-theme="dark"] { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding-bottom: 100px; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
         header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center; }
         [data-theme="dark"] header { background: rgba(0,0,0,0.8); }
         .summary-card { background: var(--card); border-radius: 25px; padding: 25px; margin: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .stat-box { background: rgba(120,120,128,0.08); padding: 12px; border-radius: 15px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; }
         .stat-val { font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 5px; }
-        .card { background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }
+        .card { background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; position: relative; }
         .media-container { width: calc(100% + 40px); margin: -20px -20px 15px -20px; background: #000; }
         .media-img, video { width: 100%; display: block; max-height: 80vh; object-fit: contain; }
+        .content { line-height: 1.5; font-size: 16px; word-wrap: break-word; }
         .tabs { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }
         .tab { flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }
         .tab.active { color: var(--accent); }
-        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; }
-        .rumors-section { margin-top:15px; padding:15px; background:rgba(255,149,0,0.08); border-left:4px solid #ff9500; border-radius:12px; font-size:14px; }
+        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; transition: transform 0.1s; }
+        .refresh-btn:active { transform: scale(0.95); opacity: 0.8; }
+        .badge-ai { background: var(--accent); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; vertical-align: middle; margin-left: 5px; }
+        .rumors-section { margin-top:20px; padding:15px; background:rgba(255,149,0,0.08); border-left:4px solid #ff9500; border-radius:10px; font-size:14px; line-height:1.6; }
     </style>
 </head>
 <body>
 <header>
     <h1 style="margin:0; font-size:24px; font-weight:900;">Intelligence</h1>
-    <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px;">🌓</button>
+    <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
 </header>
-<div style="max-width:600px; margin: 0 auto;">
+<div id="main-content" style="max-width:600px; margin: 0 auto;">
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:10px;">
-            <h2 style="margin:0; font-size:16px; font-weight:900;">STRATEGIC AI SUMMARY</h2>
-            <span style="font-size:15px; font-weight:900; color:var(--accent);">_TIME_ MSK</span>
+            <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC AI SUMMARY <span class="badge-ai">G3</span></h2>
+            <div style="text-align:right">
+                <span style="font-size:11px; opacity:0.5; display:block; font-weight:700;">LAST UPDATE</span>
+                <span style="font-size:15px; font-weight:900; color:var(--accent);">_TIME_ MSK</span>
+            </div>
         </div>
         <div class="stat-grid">
             <div class="stat-box">Эскалация<span class="stat-val">_ESC_</span></div>
             <div class="stat-box">Ядерный риск<span class="stat-val">_NUC_</span></div>
             <div class="stat-box">Наземная операция<span class="stat-val">_GND_</span></div>
             <div class="stat-box">Шанс Ирана<span class="stat-val">_IRAN_</span></div>
-            <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between; padding: 15px;">
-                Прогноз начала наземной операции: <span class="stat-val" style="margin:0;">_DATE_</span>
+            <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between; padding:15px;">
+                Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">_DATE_</span>
             </div>
         </div>
         <div style="margin-top:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 style="margin:0; font-size:16px;">Глобальный анализ</h3>
-                <button onclick="location.reload()" class="refresh-btn">REFRESH</button>
+                <h3 style="margin:0; font-size:16px;">Глобальный анализ ситуации</h3>
+                <button onclick="location.reload()" class="refresh-btn">REFRESH PAGE</button>
             </div>
-            <div style="line-height:1.6; font-size:15px; opacity:0.9;">_ANALYSIS_</div>
+            <div style="font-size:15px; line-height:1.6; opacity:0.9;">_ANALYSIS_</div>
             <div class="rumors-section">
-                <strong style="color:#ff9500; font-size:12px;">СЛУХИ И СОЦСЕТИ:</strong><br>
-                <div style="margin-top:5px;">_RUMORS_</div>
+                <strong style="color:#ff9500; font-size:12px; text-transform:uppercase;">Мониторинг слухов (X/Reddit):</strong><br>
+                <div style="margin-top:5px; opacity:0.9;">_RUMORS_</div>
             </div>
         </div>
     </div>
     <div id="feed"></div>
 </div>
 <div class="tabs">
-    <a href="javascript:void(0)" class="tab active" onclick="render('all', this)">📰 СВОДКА</a>
-    <a href="javascript:void(0)" class="tab" onclick="render('archive', this)">📦 АРХИВ</a>
-    <a href="javascript:void(0)" class="tab" onclick="render('fav', this)">⭐ SAVED</a>
+    <a href="javascript:void(0)" class="tab active" onclick="render('all', this)">📰<br>СВОДКА</a>
+    <a href="javascript:void(0)" class="tab" onclick="render('archive', this)">📦<br>АРХИВ</a>
+    <a href="javascript:void(0)" class="tab" onclick="render('fav', this)">⭐<br>SAVED</a>
 </div>
 <script>
     const allPosts = _JSON_DATA_;
@@ -236,13 +243,15 @@ def aggregate():
         let posts = mode === 'all' ? allPosts.slice(0, 50) : (mode === 'archive' ? allPosts.slice(50, 500) : allPosts.filter(p => favorites.includes(p.id)));
         container.innerHTML = posts.map(p => `
             <div class="card" id="card-${p.id}">
-                ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}"></div>` : '')}
+                ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls preload="metadata"></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}" loading="lazy"></div>` : '')}
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span style="font-weight:800; color:var(--accent);">${p.full_name}</span>
-                    <span style="opacity:0.4; font-size:12px;">${p.date_raw.split('T')[1]?.slice(0,5) || ''}</span>
+                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
+                        ${p.full_name}<br><span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
+                    </a>
+                    <span style="opacity:0.4; font-size:12px; font-weight:700;">${p.date_raw ? new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
                 </div>
-                <div style="font-size:16px; line-height:1.5;">${p.content}</div>
-                <button style="background:none; border:none; cursor:pointer; font-size:24px; margin-top:10px;" onclick="toggleFav('${p.id}')">${favorites.includes(p.id)?'⭐':'☆'}</button>
+                <div class="content">${p.content}</div>
+                <button style="background:none; border:none; cursor:pointer; font-size:24px; margin-top:15px;" onclick="toggleFav('${p.id}')">${favorites.includes(p.id)?'⭐':'☆'}</button>
             </div>
         `).join('');
         initVideoObserver();
@@ -251,7 +260,7 @@ def aggregate():
         if(favorites.includes(id)) favorites = favorites.filter(f => f !== id);
         else favorites.push(id);
         localStorage.setItem('favs', JSON.stringify(favorites));
-        render(window.currentMode || 'all');
+        render(document.querySelector('.tab.active').innerText.includes('SAVED') ? 'fav' : (document.querySelector('.tab.active').innerText.includes('АРХИВ') ? 'archive' : 'all'));
     }
     function initVideoObserver() {
         const obs = new IntersectionObserver((es) => {
@@ -265,7 +274,7 @@ def aggregate():
 </body>
 </html>"""
 
-    # Безопасная вставка данных
+    # Безопасная сборка
     f_html = html_template.replace('_TIME_', build_time)
     f_html = f_html.replace('_ESC_', ai_data['escalation'])
     f_html = f_html.replace('_NUC_', ai_data['nuclear_risk'])
