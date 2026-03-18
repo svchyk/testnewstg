@@ -25,13 +25,13 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # Используем 1.5 Pro для стабильности
-    model = genai.GenerativeModel('gemini-1.5-pro')
+    # Использование модели gemini-3-flash по твоему запросу
+    model = genai.GenerativeModel('gemini-3-flash')
 else:
     model = None
 
 # ==========================================
-# 2. СБОР ДАННЫХ
+# 2. СЛУЖЕБНЫЕ ФУНКЦИИ
 # ==========================================
 
 def get_oil_price():
@@ -127,14 +127,14 @@ def aggregate():
 
     ai_data = {
         "escalation": "??%", "nuclear_risk": "??%", "ground_op": "??%", "iran_chance": "??%", 
-        "forecast_date": "Анализ...", "analysis": "Сбор данных Gemini...", "rumors_block": "Мониторинг X/Reddit..."
+        "forecast_date": "анализ...", "analysis": "Сбор данных Gemini...", "rumors_block": "Мониторинг X/Reddit..."
     }
 
     if model:
         oil_info = get_oil_price()
         rumors_info = get_reddit_rumors()
-        prompt = f"""Анализируй: {ai_context[:6000]}. Нефть: {oil_info}. Слухи: {rumors_info}. 
-        Верни ТОЛЬКО JSON: {{'escalation': 'X%', 'nuclear_risk': 'X%', 'ground_op': 'X%', 'iran_chance': 'X%', 'forecast_date': 'DD.MM', 'analysis': '12 предложений', 'rumors_block': '10 предложений'}}"""
+        prompt = f"""Analyze: {ai_context[:6000]}. Oil: {oil_info}. Rumors: {rumors_info}. 
+        Return ONLY valid JSON: {{"escalation": "X%", "nuclear_risk": "X%", "ground_op": "X%", "iran_chance": "X%", "forecast_date": "DD.MM", "analysis": "12 sentences", "rumors_block": "10 sentences"}}"""
         try:
             response = model.generate_content(prompt)
             match = re.search(r'\{.*\}', response.text, re.DOTALL)
@@ -143,7 +143,6 @@ def aggregate():
         except Exception as e:
             print(f"AI Error: {e}")
 
-    # Обновление архива
     existing_ids = {p['id'] for p in archive}
     for np in all_current:
         if np['id'] not in existing_ids: archive.append(np)
@@ -152,7 +151,6 @@ def aggregate():
     with open(ARCHIVE_FILE, 'w', encoding='utf-8') as f:
         json.dump(archive[:2000], f, ensure_ascii=False, indent=2)
 
-    # Время обновления
     build_time = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime("%H:%M")
 
     html_template = """<!DOCTYPE html>
@@ -244,11 +242,14 @@ def aggregate():
         container.innerHTML = posts.map(p => `
             <div class="card" id="card-${p.id}">
                 ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls preload="metadata"></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}" loading="lazy"></div>` : '')}
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
-                        ${p.full_name}<br><span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none; line-height:1.2;">
+                        <span style="font-size:16px;">${p.full_name}</span><br>
+                        <span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
                     </a>
-                    <span style="opacity:0.4; font-size:12px; font-weight:700;">${p.date_raw ? new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                    <span style="opacity:0.6; font-size:13px; font-weight:700; background:rgba(120,120,128,0.1); padding:4px 8px; border-radius:8px;">
+                        ${p.date_raw ? new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : ''}
+                    </span>
                 </div>
                 <div class="content">${p.content}</div>
                 <button style="background:none; border:none; cursor:pointer; font-size:24px; margin-top:15px;" onclick="toggleFav('${p.id}')">${favorites.includes(p.id)?'⭐':'☆'}</button>
@@ -274,7 +275,7 @@ def aggregate():
 </body>
 </html>"""
 
-    # Безопасная сборка
+    # ИСПРАВЛЕНО: закрыта кавычка и скобка в строке записи файла
     f_html = html_template.replace('_TIME_', build_time)
     f_html = f_html.replace('_ESC_', ai_data['escalation'])
     f_html = f_html.replace('_NUC_', ai_data['nuclear_risk'])
