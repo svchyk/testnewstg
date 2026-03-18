@@ -38,7 +38,7 @@
             <h2 style="margin:0; font-size:16px; letter-spacing:-0.5px; font-weight:900;">STRATEGIC AI SUMMARY <span class="badge-ai">G3</span></h2>
             <div style="text-align:right">
                 <span style="font-size:11px; opacity:0.5; display:block; font-weight:700;">LAST UPDATE</span>
-                <span style="font-size:15px; font-weight:900; color:var(--accent);">02:22 MSK</span>
+                <span style="font-size:15px; font-weight:900; color:var(--accent);">02:29 MSK</span>
             </div>
         </div>
         <div class="stat-grid">
@@ -47,7 +47,7 @@
             <div class="stat-box">Наземная операция<span class="stat-val">??%</span></div>
             <div class="stat-box">Шанс Ирана<span class="stat-val">??%</span></div>
             <div class="stat-box" style="grid-column: span 2; border: 1px solid rgba(0,122,255,0.2); flex-direction:row; align-items:center; justify-content:space-between; padding:15px;">
-                Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">Анализ...</span>
+                Прогноз начала наземной операции: <span class="stat-val" style="margin:0; color:var(--accent);">анализ...</span>
             </div>
         </div>
         <div style="margin-top:20px;">
@@ -87,11 +87,14 @@
         container.innerHTML = posts.map(p => `
             <div class="card" id="card-${p.id}">
                 ${p.video ? `<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls preload="metadata"></video></div>` : (p.media ? `<div class="media-container"><img src="${p.media}" loading="lazy"></div>` : '')}
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none;">
-                        ${p.full_name}<br><span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <a href="${p.link}" target="_blank" style="font-weight:800; color:var(--accent); text-decoration:none; line-height:1.2;">
+                        <span style="font-size:16px;">${p.full_name}</span><br>
+                        <span style="opacity:0.5; font-size:12px; font-weight:400;">@${p.handle}</span>
                     </a>
-                    <span style="opacity:0.4; font-size:12px; font-weight:700;">${p.date_raw ? new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                    <span style="opacity:0.6; font-size:13px; font-weight:700; background:rgba(120,120,128,0.1); padding:4px 8px; border-radius:8px;">
+                        ${p.date_raw ? new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : ''}
+                    </span>
                 </div>
                 <div class="content">${p.content}</div>
                 <button style="background:none; border:none; cursor:pointer; font-size:24px; margin-top:15px;" onclick="toggleFav('${p.id}')">${favorites.includes(p.id)?'⭐':'☆'}</button>
