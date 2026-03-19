@@ -32,7 +32,7 @@
     <div class="summary-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px;">
             <h2 style="margin:0; font-size:16px; font-weight:900;">STRATEGIC AI SUMMARY <span style="background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px; font-size:9px;">G3</span></h2>
-            <span style="font-size:15px; font-weight:900; color:var(--accent);">03:24 MSK</span>
+            <span style="font-size:15px; font-weight:900; color:var(--accent);">03:28 MSK</span>
         </div>
         <div class="stat-grid">
             <div class="stat-box">Эскалация<span class="stat-val">??%</span></div>
@@ -68,18 +68,26 @@
         const container = document.getElementById('feed');
         let posts = allPosts.slice(0, 50);
         if(mode === 'archive') posts = allPosts.slice(50, 300);
-        container.innerHTML = posts.map(p => `
+        container.innerHTML = posts.map(p => {
+            // ИСПРАВЛЕНО: Преобразование времени поста в московское (UTC+3)
+            let mskTime = '';
+            if(p.date_raw) {
+                const date = new Date(p.date_raw);
+                // Если браузер в другом поясе, принудительно вычисляем UTC+3
+                mskTime = new Date(date.getTime() + (3 * 60 * 60 * 1000)).toISOString().split('T')[1].slice(0,5);
+            }
+            return `
             <div class="card">
                 ${p.video ? `<video src="${p.video}" controls style="width:100%"></video>` : (p.media ? `<img src="${p.media}" style="width:100%">` : '')}
                 <div style="padding:20px">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
                         <span style="font-weight:800; color:var(--accent)">${p.full_name}</span>
-                        <span class="post-time">${p.date_raw ? p.date_raw.split('T')[1].slice(0,5) : ''}</span>
+                        <span class="post-time">${mskTime}</span>
                     </div>
                     <div style="font-size:16px">${p.content}</div>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     }
     render('all');
 </script>
