@@ -5,8 +5,12 @@ import json
 import os
 import re
 import yfinance as yf
-import google.generativeai as genai
 import logging
+from typing import Optional
+
+# Новый SDK: pip install google-genai
+from google import genai
+from google.genai import types
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 log = logging.getLogger(__name__)
@@ -21,36 +25,30 @@ ANALYSIS_CHANNELS = ['tasnim_khabar', 'farsna', 'Military_Arabic', 'intelsky', '
 ARCHIVE_FILE = 'archive.json'
 GEMINI_KEY   = os.getenv("GEMINI_API_KEY")
 
-# ── Инициализация Gemini ──────────────────────────────────────────────────────
-# Доступные flash-модели (в порядке предпочтения):
-#   gemini-2.0-flash   →  самая свежая
-#   gemini-1.5-flash   →  стабильная fallback
-PREFERRED_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
+# Порядок предпочтения моделей
+PREFERRED_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+]
 
-model = None
+# Инициализируем клиент (без тест-запроса — не тратим квоту)
+gemini_client = None
+
 if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
-    for model_name in PREFERRED_MODELS:
-        try:
-            candidate = genai.GenerativeModel(model_name)
-            # Быстрая проверка — короткий тест-запрос
-            test = candidate.generate_content("reply with the single word: ok")
-            if test and test.text:
-                model = candidate
-                log.info(f"✅ Gemini model loaded: {model_name}")
-                break
-        except Exception as e:
-            log.warning(f"Model {model_name} unavailable: {e}")
-    if model is None:
-        log.error("❌ No Gemini model could be loaded. AI block will show defaults.")
+    try:
+        gemini_client = genai.Client(api_key=GEMINI_KEY)
+        log.info(f"Gemini client initialised. Will try models: {PREFERRED_MODELS}")
+    except Exception as e:
+        log.error(f"Gemini client init failed: {e}")
 else:
-    log.warning("⚠️  GEMINI_API_KEY not set. AI block disabled.")
+    log.warning("GEMINI_API_KEY not set — AI block disabled.")
 
 # ==========================================
 # 2. СБОР ДАННЫХ
 # ==========================================
 
-def get_oil_price() -> str:
+def get_oil_price():
     try:
         oil   = yf.Ticker("BZ=F")
         price = oil.history(period="1d")["Close"].iloc[-1]
@@ -60,10 +58,10 @@ def get_oil_price() -> str:
         return "N/A"
 
 
-def get_reddit_rumors() -> str:
+def get_reddit_rumors():
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        res  = requests.get(
+        res = requests.get(
             "https://www.reddit.com/r/MiddleEastNews/new.json?limit=15",
             headers=headers, timeout=10
         )
@@ -75,7 +73,7 @@ def get_reddit_rumors() -> str:
         return ""
 
 
-def get_tg_posts(channel_name: str, limit: int = 100) -> list:
+def get_tg_posts(channel_name, limit=100):
     posts   = []
     url     = f"https://t.me/s/{channel_name}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -144,7 +142,7 @@ _DEFAULT_AI = {
     "ground_op":     "N/A",
     "iran_chance":   "N/A",
     "forecast_date": "N/A",
-    "analysis":      "AI-анализ недоступен. Проверьте GEMINI_API_KEY и подключение к сети.",
+    "analysis":      "AI-анализ недоступен. Проверьте GEMINI_API_KEY, квоту и подключение к сети.",
     "rumors_block":  "Данные о слухах не получены.",
 }
 
@@ -153,27 +151,20 @@ _JSON_SCHEMA = """{
   "nuclear_risk":  "<X%>",
   "ground_op":     "<X%>",
   "iran_chance":   "<X%>",
-  "forecast_date": "<DD.MM или 'не определено'>",
+  "forecast_date": "<DD.MM или не определено>",
   "analysis":      "<12 информативных предложений о стратегической ситуации>",
   "rumors_block":  "<10 предложений о трендах в соцсетях и неподтверждённых данных>"
 }"""
 
 
-def _extract_json(text: str) -> dict | None:
-    """
-    Надёжно извлекает первый JSON-объект из произвольного текста.
-    Справляется с:
-      - markdown-блоками ```json … ```
-      - лишним текстом до/после фигурных скобок
-      - одинарными кавычками вместо двойных
-    """
-    # 1. убираем markdown-fence
+def _extract_json(text):
+    """Надёжно извлекает первый JSON-объект из произвольного текста."""
     text = re.sub(r"```(?:json)?", "", text).strip()
 
-    # 2. вырезаем первый {...} блок, учитывая вложенность
     start = text.find("{")
     if start == -1:
         return None
+
     depth, end = 0, -1
     for i, ch in enumerate(text[start:], start):
         if ch == "{":
@@ -186,79 +177,80 @@ def _extract_json(text: str) -> dict | None:
     if end == -1:
         return None
 
-    raw = text[start : end + 1]
+    raw = text[start: end + 1]
 
-    # 3. пробуем стандартный парсинг
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         pass
 
-    # 4. fallback: одинарные кавычки → двойные (только если нет апострофов внутри)
     try:
-        fixed = raw.replace("'", '"')
-        return json.loads(fixed)
+        return json.loads(raw.replace("'", '"'))
     except json.JSONDecodeError:
         pass
 
-    log.warning("JSON extraction failed. Raw snippet: %s", raw[:200])
+    log.warning("JSON extraction failed. Snippet: %s", raw[:200])
     return None
 
 
-def get_ai_analysis(ai_context: str, oil_info: str, rumors_info: str) -> dict:
-    if model is None:
+def get_ai_analysis(ai_context, oil_info, rumors_info):
+    if gemini_client is None:
         return _DEFAULT_AI.copy()
 
-    prompt = f"""You are a geopolitical intelligence analyst.
-Analyze the following Middle East news feed and return ONLY a valid JSON object — no extra text, no markdown, no explanation.
+    prompt = (
+        "You are a geopolitical intelligence analyst.\n"
+        "Analyze the following Middle East news feed and return ONLY a valid JSON object "
+        "- no extra text, no markdown, no explanation.\n\n"
+        "NEWS FEED:\n" + ai_context[:7000] + "\n\n"
+        "BRENT OIL: " + oil_info + " USD/barrel\n"
+        "SOCIAL MEDIA RUMORS: " + rumors_info[:1000] + "\n\n"
+        "Return this exact JSON structure:\n" + _JSON_SCHEMA + "\n\n"
+        "Rules:\n"
+        "- Percentages must be realistic (e.g. '34%'). Do NOT use '??%'.\n"
+        "- forecast_date: DD.MM format, or 'не определено'.\n"
+        "- analysis: exactly 12 sentences.\n"
+        "- rumors_block: exactly 10 sentences.\n"
+        "- Output ONLY the JSON object, nothing else."
+    )
 
-NEWS FEED (last ~7000 chars):
-{ai_context[:7000]}
-
-BRENT OIL: {oil_info} USD/barrel
-SOCIAL MEDIA RUMORS: {rumors_info[:1000]}
-
-Return this exact JSON structure (fill in the values):
-{_JSON_SCHEMA}
-
-Rules:
-- Percentages must be realistic (e.g. "34%", "7%"). Do NOT use "??%".
-- forecast_date: best estimate in DD.MM format, or "не определено" if unknown.
-- analysis: exactly 12 sentences.
-- rumors_block: exactly 10 sentences about unverified social media reports.
-- Output ONLY the JSON object, nothing else.
-"""
-
-    for attempt in range(1, 4):  # до 3 попыток
-        try:
-            log.info(f"AI request attempt {attempt}…")
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.4,
-                    max_output_tokens=1500,
+    for model_name in PREFERRED_MODELS:
+        for attempt in range(1, 3):
+            try:
+                log.info("AI request: model=%s attempt=%d", model_name, attempt)
+                response = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=0.4,
+                        max_output_tokens=1500,
+                    )
                 )
-            )
-            text = response.text.strip()
-            log.debug("Raw AI response: %s", text[:500])
+                text = response.text.strip()
+                data = _extract_json(text)
+                if data:
+                    required = {"escalation", "nuclear_risk", "ground_op", "iran_chance",
+                                "forecast_date", "analysis", "rumors_block"}
+                    missing = required - data.keys()
+                    if missing:
+                        log.warning("Missing keys: %s. Merging with defaults.", missing)
+                        merged = _DEFAULT_AI.copy()
+                        merged.update(data)
+                        return merged
+                    log.info("AI analysis OK. model=%s", model_name)
+                    return data
+                else:
+                    log.warning("Could not extract JSON. model=%s attempt=%d", model_name, attempt)
 
-            data = _extract_json(text)
-            if data:
-                # Валидируем обязательные ключи
-                required = {"escalation", "nuclear_risk", "ground_op", "iran_chance",
-                            "forecast_date", "analysis", "rumors_block"}
-                missing = required - data.keys()
-                if missing:
-                    log.warning(f"AI response missing keys: {missing}. Merging with defaults.")
-                    merged = _DEFAULT_AI.copy()
-                    merged.update(data)
-                    return merged
-                log.info("✅ AI analysis parsed successfully.")
-                return data
-            else:
-                log.warning(f"Attempt {attempt}: could not extract JSON.")
-        except Exception as e:
-            log.error(f"Attempt {attempt} failed: {e}")
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "quota" in err_str.lower():
+                    log.warning("Quota exceeded for %s. Trying next model.", model_name)
+                    break
+                elif "404" in err_str or "not found" in err_str.lower():
+                    log.warning("Model %s not found. Trying next model.", model_name)
+                    break
+                else:
+                    log.error("Attempt %d error (%s): %s", attempt, model_name, e)
 
     log.error("All AI attempts failed. Using defaults.")
     return _DEFAULT_AI.copy()
@@ -268,39 +260,34 @@ Rules:
 # ==========================================
 
 def aggregate():
-    # Загрузка архива
-    archive: list = []
+    archive = []
     if os.path.exists(ARCHIVE_FILE):
         try:
             with open(ARCHIVE_FILE, "r", encoding="utf-8") as f:
                 archive = json.load(f)
         except Exception as e:
-            log.warning(f"Could not load archive: {e}")
+            log.warning("Could not load archive: %s", e)
 
-    # Скрапинг постов
-    all_scraped: list = []
+    all_scraped = []
     for ch in DISPLAY_CHANNELS:
         posts = get_tg_posts(ch, limit=50)
-        log.info(f"  {ch}: {len(posts)} posts")
+        log.info("  %s: %d posts", ch, len(posts))
         all_scraped.extend(posts)
 
     new_posts_sorted = sorted(all_scraped, key=lambda x: x["date_raw"], reverse=True)
 
-    # Контекст для AI
     ai_context = "NEWS FEED:\n" + " ".join(p["text_plain"] for p in new_posts_sorted[:50])
     for ch in ANALYSIS_CHANNELS:
         extra = get_tg_posts(ch, limit=10)
         ai_context += " " + " ".join(p["text_plain"] for p in extra)
 
-    # AI-анализ
     oil_info    = get_oil_price()
     rumors_info = get_reddit_rumors()
-    log.info(f"Oil: {oil_info} | Rumors chars: {len(rumors_info)}")
+    log.info("Oil: %s | Rumors chars: %d", oil_info, len(rumors_info))
 
     ai_data = get_ai_analysis(ai_context, oil_info, rumors_info)
-    log.info(f"AI data: escalation={ai_data['escalation']} nuclear={ai_data['nuclear_risk']}")
+    log.info("AI result: escalation=%s nuclear=%s", ai_data["escalation"], ai_data["nuclear_risk"])
 
-    # Обновление архива
     existing_ids = {p["id"] for p in archive}
     for post in all_scraped:
         if post["id"] not in existing_ids:
@@ -310,15 +297,12 @@ def aggregate():
 
     with open(ARCHIVE_FILE, "w", encoding="utf-8") as f:
         json.dump(archive, f, ensure_ascii=False, indent=2)
-    log.info(f"Archive saved: {len(archive)} posts")
+    log.info("Archive saved: %d posts", len(archive))
 
     build_time = (
         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
     ).strftime("%H:%M")
 
-    # ==========================================
-    # 5. ВЕРСТКА HTML
-    # ==========================================
     html_template = """<!DOCTYPE html>
 <html lang="ru" data-theme="light">
 <head>
@@ -328,7 +312,7 @@ def aggregate():
     <style>
         :root { --bg:#f2f2f7; --card:#fff; --text:#000; --accent:#007aff; --sub:rgba(120,120,128,0.08); }
         [data-theme="dark"] { --bg:#000; --card:#1c1c1e; --text:#fff; --accent:#0a84ff; --sub:rgba(255,255,255,0.06); }
-        * { box-sizing: border-box; }
+        * { box-sizing:border-box; }
         body { background:var(--bg); color:var(--text); font-family:-apple-system,system-ui,sans-serif; margin:0; padding-bottom:100px; -webkit-tap-highlight-color:transparent; }
         header { position:sticky; top:0; z-index:1000; background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); padding:15px 20px; border-bottom:.5px solid rgba(0,0,0,.1); display:flex; justify-content:space-between; align-items:center; }
         [data-theme="dark"] header { background:rgba(0,0,0,.85); }
@@ -351,9 +335,8 @@ def aggregate():
 <body>
 <header>
     <h1 style="margin:0;font-size:24px;font-weight:900;">Intelligence</h1>
-    <button onclick="toggleTheme()" style="background:none;border:none;font-size:20px;cursor:pointer;">🌓</button>
+    <button onclick="toggleTheme()" style="background:none;border:none;font-size:20px;cursor:pointer;">&#127763;</button>
 </header>
-
 <div id="main-content" style="max-width:600px;margin:0 auto;">
   <div class="summary-card">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px;border-bottom:1px solid rgba(0,0,0,.1);padding-bottom:10px;">
@@ -366,7 +349,6 @@ def aggregate():
         <span style="font-size:15px;font-weight:900;color:var(--accent);">_TIME_ MSK</span>
       </div>
     </div>
-
     <div class="stat-grid">
       <div class="stat-box">Эскалация<span class="stat-val">_ESC_</span></div>
       <div class="stat-box">Ядерный риск<span class="stat-val">_NUC_</span></div>
@@ -376,7 +358,6 @@ def aggregate():
         Прогноз наземной операции: <span class="stat-val" style="margin:0;color:var(--accent);">_DATE_</span>
       </div>
     </div>
-
     <div style="margin-top:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
         <h3 style="margin:0;font-size:16px;">Глобальный анализ ситуации</h3>
@@ -389,73 +370,44 @@ def aggregate():
       </div>
     </div>
   </div>
-
   <div id="feed"></div>
 </div>
-
 <div class="tabs">
-  <a class="tab active" onclick="render('all',this)">📰<br>СВОДКА</a>
-  <a class="tab" onclick="render('archive',this)">📦<br>АРХИВ</a>
-  <a class="tab" onclick="render('fav',this)">⭐<br>SAVED</a>
+  <a class="tab active" onclick="render('all',this)">&#128240;<br>СВОДКА</a>
+  <a class="tab" onclick="render('archive',this)">&#128230;<br>АРХИВ</a>
+  <a class="tab" onclick="render('fav',this)">&#11088;<br>SAVED</a>
 </div>
-
 <script>
-const allPosts = _JSON_DATA_;
-let favorites = JSON.parse(localStorage.getItem('favs')||'[]');
-
+const allPosts=_JSON_DATA_;
+let favorites=JSON.parse(localStorage.getItem('favs')||'[]');
 function toggleTheme(){
   const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',t);
   localStorage.setItem('theme',t);
 }
-
-function render(mode='all',el=null){
-  if(el){
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    el.classList.add('active');
-  }
-  const container=document.getElementById('feed');
-  let posts=mode==='all'?allPosts.slice(0,50)
-           :mode==='archive'?allPosts.slice(50,500)
-           :allPosts.filter(p=>favorites.includes(p.id));
-  container.innerHTML=posts.map(p=>`
-    <div class="card" id="card-${p.id}">
-      ${p.video
-        ?`<div class="media-container"><video src="${p.video}" autoplay muted loop playsinline controls></video></div>`
-        :p.media
-          ?`<div class="media-container"><img src="${p.media}" loading="lazy" class="media-img"></div>`
-          :''}
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-        <a href="${p.link}" target="_blank" style="font-weight:800;color:var(--accent);text-decoration:none;line-height:1.3;">
-          <span style="font-size:17px;">${p.full_name}</span><br>
-          <span style="opacity:.5;font-size:12px;font-weight:400;">@${p.handle}</span>
-        </a>
-        <span class="post-time">
-          ${p.date_raw?new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}):''}
-        </span>
-      </div>
-      <div class="content">${p.content}</div>
-      <button style="background:none;border:none;cursor:pointer;font-size:24px;margin-top:15px;"
-              onclick="toggleFav('${p.id}')">${favorites.includes(p.id)?'⭐':'☆'}</button>
-    </div>
-  `).join('');
+function render(mode,el){
+  mode=mode||'all';
+  if(el){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');}
+  var c=document.getElementById('feed');
+  var posts=mode==='all'?allPosts.slice(0,50):mode==='archive'?allPosts.slice(50,500):allPosts.filter(function(p){return favorites.includes(p.id);});
+  c.innerHTML=posts.map(function(p){
+    var media=p.video?'<div class="media-container"><video src="'+p.video+'" autoplay muted loop playsinline controls></video></div>':p.media?'<div class="media-container"><img src="'+p.media+'" loading="lazy" class="media-img"></div>':'';
+    var time=p.date_raw?new Date(p.date_raw).toLocaleString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
+    var star=favorites.includes(p.id)?'&#11088;':'&#9734;';
+    return '<div class="card" id="card-'+p.id+'">'+media+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;"><a href="'+p.link+'" target="_blank" style="font-weight:800;color:var(--accent);text-decoration:none;line-height:1.3;"><span style="font-size:17px;">'+p.full_name+'</span><br><span style="opacity:.5;font-size:12px;font-weight:400;">@'+p.handle+'</span></a><span class="post-time">'+time+'</span></div><div class="content">'+p.content+'</div><button style="background:none;border:none;cursor:pointer;font-size:24px;margin-top:15px;" onclick="toggleFav(\''+p.id+'\')">'+star+'</button></div>';
+  }).join('');
   initVideoObserver();
 }
-
 function toggleFav(id){
-  favorites=favorites.includes(id)?favorites.filter(f=>f!==id):[...favorites,id];
+  favorites=favorites.includes(id)?favorites.filter(function(f){return f!==id;}):[].concat(favorites,[id]);
   localStorage.setItem('favs',JSON.stringify(favorites));
-  const mode=document.querySelector('.tab.active').textContent;
-  render(mode.includes('SAVED')?'fav':mode.includes('АРХИВ')?'archive':'all');
+  var m=document.querySelector('.tab.active').textContent;
+  render(m.includes('SAVED')?'fav':m.includes('АРХИВ')?'archive':'all');
 }
-
 function initVideoObserver(){
-  const obs=new IntersectionObserver(es=>{
-    es.forEach(e=>e.isIntersecting?e.target.play().catch(()=>{}):e.target.pause());
-  },{threshold:0.5});
-  document.querySelectorAll('video').forEach(v=>obs.observe(v));
+  var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.play().catch(function(){});}else{e.target.pause();}});},{threshold:0.5});
+  document.querySelectorAll('video').forEach(function(v){obs.observe(v);});
 }
-
 document.documentElement.setAttribute('data-theme',localStorage.getItem('theme')||'light');
 render();
 </script>
@@ -474,7 +426,7 @@ render();
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
-    log.info("✅ index.html written successfully.")
+    log.info("index.html written successfully.")
 
 
 if __name__ == "__main__":
