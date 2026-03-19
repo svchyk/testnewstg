@@ -162,30 +162,81 @@ def aggregate():
 <html lang="ru" data-theme="light">
 <head>
     <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Intelligence Center</title>
-    <style>
-        :root { --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }
-        [data-theme="dark"] { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
-        header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 15px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center; }
-        [data-theme="dark"] header { background: rgba(0,0,0,0.8); }
-        .summary-card { background: var(--card); border-radius: 25px; padding: 25px; margin: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .stat-box { background: rgba(120,120,128,0.08); padding: 12px; border-radius: 15px; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; }
-        .stat-val { font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 5px; }
-        .card { background: var(--card); border-radius: 20px; padding: 20px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; position: relative; }
-        .media-container { width: calc(100% + 40px); margin: -20px -20px 15px -20px; background: #000; }
-        .media-img, video { width: 100%; display: block; max-height: 80vh; object-fit: contain; }
-        .content { line-height: 1.5; font-size: 16px; word-wrap: break-word; }
-        .tabs { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; padding: 12px 0 35px 0; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }
-        .tab { flex: 1; text-align: center; text-decoration: none; color: #8e8e93; font-size: 10px; font-weight: 700; }
-        .tab.active { color: var(--accent); }
-        .refresh-btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer; }
-        .rumors-section { margin-top:20px; padding:15px; background:rgba(255,149,0,0.08); border-left:4px solid #ff9500; border-radius:10px; font-size:14px; line-height:1.6; }
-        /* Красивое время */
-        .post-time { opacity: 0.6; font-size: 13px; font-weight: 700; background: rgba(120,120,128,0.12); padding: 4px 10px; border-radius: 10px; color: var(--text); }
-    </style>
+   <style>
+    :root { --bg: #f2f2f7; --card: #ffffff; --text: #000; --accent: #007aff; }
+    [data-theme="dark"] { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; }
+    
+    body { 
+        background: var(--bg); 
+        color: var(--text); 
+        /* Подключаем шрифт Inter и делаем его плотнее */
+        font-family: 'Inter', -apple-system, sans-serif; 
+        margin: 0; 
+        padding-bottom: 100px; 
+        letter-spacing: -0.02em; 
+    }
+
+    /* Главные заголовки: STRATEGIC AI SUMMARY и цифры */
+    h1, h2, .stat-val, .post-name, .refresh-btn { 
+        font-weight: 900 !important; /* Экстремально жирный */
+        text-transform: uppercase;   /* Все заглавные */
+        letter-spacing: -0.05em;     /* Буквы стоят плотно друг к другу */
+    }
+
+    header h1 { font-size: 26px; margin: 0; }
+
+    .summary-card { 
+        background: var(--card); 
+        border-radius: 30px; 
+        padding: 25px; 
+        margin: 15px; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+    }
+    
+    .stat-box { 
+        background: rgba(120,120,128,0.08); 
+        padding: 15px; 
+        border-radius: 20px; 
+        font-size: 13px; 
+        font-weight: 700; 
+    }
+    
+    .stat-val { 
+        font-size: 28px; 
+        color: var(--accent); 
+        margin-top: 5px; 
+        text-transform: none; 
+    }
+
+    .card { 
+        background: var(--card); 
+        border-radius: 25px; 
+        padding: 20px; 
+        margin: 15px; 
+    }
+
+    /* Название канала в посте */
+    .post-name { 
+        font-size: 18px; 
+        text-transform: none; /* Каналы оставляем обычным регистром */
+        letter-spacing: -0.03em;
+    }
+
+    .content { 
+        line-height: 1.4; 
+        font-size: 16px; 
+        font-weight: 400; 
+        margin-top: 10px; 
+    }
+
+    .post-time { 
+        font-weight: 900; 
+        color: var(--accent); 
+    }
+</style>
 </head>
 <body>
 <header>
