@@ -1,5 +1,6 @@
-requests
-beautifulsoup4
 google-genai
-feedparser
+google-generativeai
+beautifulsoup4
+requests
 yfinance
+feedparser
