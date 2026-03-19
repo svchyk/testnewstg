@@ -20,7 +20,6 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # Используем корректное имя модели для API
     model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     model = None
@@ -103,7 +102,6 @@ def aggregate():
     for ch in DISPLAY_CHANNELS:
         all_current.extend(get_tg_posts(ch))
     
-    # Подготовка данных для ИИ
     ai_data = {
         "escalation": "??%", "nuclear_risk": "??%", "ground_op": "??%", "iran_chance": "??%", 
         "forecast_date": "анализ...", "analysis": "Сбор данных...", "rumors_block": "Мониторинг..."
@@ -122,7 +120,6 @@ def aggregate():
         except Exception as e:
             print(f"AI Error: {e}")
 
-    # Сохранение архива
     existing_ids = {p['id'] for p in archive}
     for np in all_current:
         if np['id'] not in existing_ids: archive.append(np)
@@ -130,9 +127,9 @@ def aggregate():
     with open(ARCHIVE_FILE, 'w', encoding='utf-8') as f:
         json.dump(archive[:1500], f, ensure_ascii=False, indent=2)
 
+    # ИСПРАВЛЕНО: Время сборки по Москве (UTC+3)
     build_time = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime("%H:%M")
 
-    # Формирование HTML
     html_template = """<!DOCTYPE html>
 <html lang="ru" data-theme="light">
 <head>
@@ -203,25 +200,32 @@ def aggregate():
         const container = document.getElementById('feed');
         let posts = allPosts.slice(0, 50);
         if(mode === 'archive') posts = allPosts.slice(50, 300);
-        container.innerHTML = posts.map(p => `
+        container.innerHTML = posts.map(p => {
+            // ИСПРАВЛЕНО: Преобразование времени поста в московское (UTC+3)
+            let mskTime = '';
+            if(p.date_raw) {
+                const date = new Date(p.date_raw);
+                // Если браузер в другом поясе, принудительно вычисляем UTC+3
+                mskTime = new Date(date.getTime() + (3 * 60 * 60 * 1000)).toISOString().split('T')[1].slice(0,5);
+            }
+            return `
             <div class="card">
                 ${p.video ? `<video src="${p.video}" controls style="width:100%"></video>` : (p.media ? `<img src="${p.media}" style="width:100%">` : '')}
                 <div style="padding:20px">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
                         <span style="font-weight:800; color:var(--accent)">${p.full_name}</span>
-                        <span class="post-time">${p.date_raw ? p.date_raw.split('T')[1].slice(0,5) : ''}</span>
+                        <span class="post-time">${mskTime}</span>
                     </div>
                     <div style="font-size:16px">${p.content}</div>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     }
     render('all');
 </script>
 </body>
 </html>"""
 
-    # Итоговая замена
     f_html = html_template.replace('_TIME_', build_time)
     f_html = f_html.replace('_ESC_', ai_data.get('escalation', '??%'))
     f_html = f_html.replace('_NUC_', ai_data.get('nuclear_risk', '??%'))
