@@ -1,5 +1,16 @@
 [
   {
+    "id": "infantmilitario_194197",
+    "full_name": "Милитарист",
+    "content": "Зеленский сообщил, что провел разговор с Макроном, и заявил, что президент Франции обязался ускорить поставки военной помощи Украине",
+    "text_plain": "Зеленский сообщил, что провел разговор с Макроном, и заявил, что президент Франции обязался ускорить поставки военной помощи Украине",
+    "date_raw": "2026-08-22T16:36:50+00:00",
+    "link": "https://t.me/infantmilitario/194197",
+    "handle": "infantmilitario",
+    "media": "",
+    "video": ""
+  },
+  {
     "id": "varlamov_news_73826",
     "full_name": "Varlamov News",
     "content": "В Telegram появился новый вид прокси — веб-прокси стали доступны в обновленной версии (7.1) клиента Telegram Desktop. Вероятно, в ближайшее время они появятся и в других клиентах.<br/><br/>Для провайдера соединение через веб-прокси будет выглядеть как обычный трафик сайта. Предполагается, что таким образом мессенджер станет эффективнее обходить блокировки.<br/>_______________________<br/><br/><i class=\"emoji\" style=\"background-image:url('//telegram.org/img/emoji/40/F09F97BD.png')\"><b>🗽</b></i> <a href=\"https://t.me/vpn_liberty_bot?start=promo_VARLAMOVTHIRTYD3\" onclick=\"return confirm('Open this link?\\n\\n'+this.href);\" rel=\"noopener\" target=\"_blank\">VPN Liberty</a> дает 30 дней бесплатного доступа всем подписчикам канала Varlamov News. Нажмите на <a href=\"https://t.me/vpn_liberty_bot?start=promo_VARLAMOVTHIRTYD3\" onclick=\"return confirm('Open this link?\\n\\n'+this.href);\" rel=\"noopener\" target=\"_blank\">синий текст</a> и пользуйтесь бесплатным периодом без привязывания карты и автосписаний. <a href=\"https://t.me/vpn_liberty_bot?start=promo_VARLAMOVTHIRTYD3\" onclick=\"return confirm('Open this link?\\n\\n'+this.href);\" rel=\"noopener\" target=\"_blank\">Telegram-бот</a> <tg-emoji emoji-id=\"5213147006561692829\"><i class=\"emoji\" style=\"background-image:url('//telegram.org/img/emoji/40/F09F949B.png')\"><b>🔛</b></i></tg-emoji> <a href=\"?q=%23ad\">#ad</a>",
@@ -21986,17 +21997,6 @@
     "link": "https://t.me/varlamov_news/73343",
     "handle": "varlamov_news",
     "media": "",
-    "video": ""
-  },
-  {
-    "id": "infantmilitario_192903",
-    "full_name": "Милитарист",
-    "content": "Согласно украинским заявлениям, нанесен удар по Бортнической станции аэрации. Это единственный крупный комплекс очистных сооружений сточных вод в Киеве и прилегающих населенных пунктах Ирпень, Вишневое, Борисполь и др.",
-    "text_plain": "Согласно украинским заявлениям, нанесен удар по Бортнической станции аэрации. Это единственный крупный комплекс очистных сооружений сточных вод в Киеве и прилегающих населенных пунктах Ирпень, Вишневое, Борисполь и др.",
-    "date_raw": "2026-08-05T13:01:11+00:00",
-    "link": "https://t.me/infantmilitario/192903",
-    "handle": "infantmilitario",
-    "media": "https://cdn4.telesco.pe/file/OzQN0d3TyrnykwN2ItBeEHV0BPlbehDa_ZE19rRgXAjVGh9aQ_mf2iYACCI02TSIml_eypMRO1gM3LNlbbzExiMIaaD9lL36k6qriLG7n1s3-w1_7Uq-s8g_cM0ta8kOb3hxz31gj4YTS8_nHvdkByH8Nw5zBfoFMMYk6a21W2JaBNxP6UguyiPoops_g9pVFdYXCd8vX6vrulZRSuzeCFtuZEVWzHYoKiB0L5sHjVR9iizdcfqO9r6MBJMrrq5fePKO8-cjPiqM99iaDEiJmf-qUcTNXFYL5j2RtuR3JIYbRsscwVXtF-auHbmQVWEIkIcMNHGgcv8-t6ZeV3U_aw.jpg",
     "video": ""
   }
 ]
